@@ -180,7 +180,7 @@ CipUint GetConnectionId(void) {
 }
 
 void InitializeConnectionManager(CipClass *class) {
-
+  OPENER_TRACE_INFO("[InitializeConnectionManager]\n");
   CipClass *meta_class = class->class_instance.cip_class;
 
   InsertAttribute( (CipInstance *) class, 1, kCipUint,
@@ -204,8 +204,9 @@ void InitializeConnectionManager(CipClass *class) {
 }
 
 EipStatus ConnectionManagerInit(EipUint16 unique_connection_id) {
+  OPENER_TRACE_INFO("[ConnectionManagerInit]\n");
   InitializeConnectionManagerData();
-
+  
   CipClass *connection_manager = CreateCipClass(
     g_kCipConnectionManagerClassCode,   /* class ID */
     0,   /* # of class attributes */
@@ -244,12 +245,15 @@ EipStatus HandleReceivedConnectedData(
   int data_length,
   struct sockaddr_in *from_address
   ) {
-
+  OPENER_TRACE_INFO("[HandleReceivedConnectedData]\n");
   if ( ( CreateCommonPacketFormatStructure(data, data_length,
                                            &g_common_packet_format_data_item) )
        == kEipStatusError ) {
     return kEipStatusError;
   } else {
+    SetHeartBeat(g_common_packet_format_data_item.data_item.data[6]);
+    EipUint8 hb = GetHeartBeat();
+    OPENER_TRACE_INFO("[HandleReceivedConnectedData] heartbeat from client = %u\n", hb);
     /* check if connected address item or sequenced address item received, otherwise it is no connected message and should not be here */
     if ( (g_common_packet_format_data_item.address_item.type_id
           == kCipItemIdConnectionAddress)
@@ -495,6 +499,7 @@ EipStatus ForwardOpen(
   struct sockaddr *originator_address,
   const int encapsulation_session
   ) {
+  OPENER_TRACE_INFO("[ForwardOpen]\n");
   (void) instance; /*suppress compiler warning */
 
   bool is_null_request = false; /* 1 = Null Request, 0 =  Non-Null Request  */
@@ -562,6 +567,7 @@ EipStatus ForwardClose(
   CipMessageRouterResponse *message_router_response,
   struct sockaddr *originator_address,
   const int encapsulation_session) {
+  OPENER_TRACE_INFO("[ForwardClose]\n");
   /*Suppress compiler warning*/
   (void) instance;
 
@@ -647,7 +653,7 @@ EipStatus GetConnectionOwner(
 }
 
 EipStatus ManageConnections(MilliSeconds elapsed_time) {
-  //OPENER_TRACE_INFO("Entering ManageConnections\n");
+  //OPENER_TRACE_INFO("[ManageConnections]\n");
   /*Inform application that it can execute */
   HandleApplication();
   ManageEncapsulationMessages(elapsed_time);
@@ -684,6 +690,7 @@ EipStatus ManageConnections(MilliSeconds elapsed_time) {
                    kUdpCommuncationDirectionProducing
                  ]) )                                                              /* only produce for the master connection */
         {
+          OPENER_TRACE_INFO("[ManageConnections] Valid Socket\n");
           if ( kConnectionObjectTransportClassTriggerProductionTriggerCyclic
                != ConnectionObjectGetTransportClassTriggerProductionTrigger(
                  connection_object) ) {
@@ -695,9 +702,11 @@ EipStatus ManageConnections(MilliSeconds elapsed_time) {
             }
           }
 
+          OPENER_TRACE_INFO("[ManageConnections] transmission_trigger_timer = %lu\n", connection_object->transmission_trigger_timer);
+          OPENER_TRACE_INFO("[ManageConnections] elapsed_time = %lu\n", elapsed_time);
           if (connection_object->transmission_trigger_timer <= elapsed_time) { /* need to send package */
-            OPENER_ASSERT(
-              NULL != connection_object->connection_send_data_function)
+            OPENER_TRACE_INFO("[ManageConnections] need to send package\n");
+            OPENER_ASSERT(NULL != connection_object->connection_send_data_function)
             EipStatus eip_status = connection_object
                                    ->connection_send_data_function(
               connection_object);
@@ -717,8 +726,14 @@ EipStatus ManageConnections(MilliSeconds elapsed_time) {
           } else {
             connection_object->transmission_trigger_timer -= elapsed_time;
           }
+        } else {
+          OPENER_TRACE_INFO("[ManageConnections] Invalid socket\n");
         }
+      } else {
+        OPENER_TRACE_INFO("[ManageConnections] 1. Not Connection Object State Established\n");
       }
+    } else {
+        OPENER_TRACE_INFO("[ManageConnections] 2. Not Connection Object State Established\n");
     }
     node = node->next;
   }
@@ -742,6 +757,7 @@ EipStatus AssembleForwardOpenResponse(
   EipUint8 general_status,
   EipUint16 extended_status
   ) {
+  OPENER_TRACE_INFO("[AssembleForwardOpenResponse]\n");
   /* write reply information in CPF struct dependent of pa_status */
   CipCommonPacketFormatData *cip_common_packet_format_data =
     &g_common_packet_format_data_item;
@@ -756,7 +772,7 @@ EipStatus AssembleForwardOpenResponse(
   message_router_response->general_status = general_status;
 
   if (kCipErrorSuccess == general_status) {
-    OPENER_TRACE_INFO("assembleFWDOpenResponse: sending success response\n");
+    OPENER_TRACE_INFO("[AssembleForwardOpenResponse]: sending success response\n");
     message_router_response->data_length = 26; /* if there is no application specific data */
     message_router_response->size_of_additional_status = 0;
 
@@ -771,7 +787,7 @@ EipStatus AssembleForwardOpenResponse(
     AddDintToMessage(connection_object->cip_produced_connection_id, &message);
   } else {
     /* we have an connection creation error */
-    OPENER_TRACE_INFO("AssembleForwardOpenResponse: sending error response\n");
+    OPENER_TRACE_INFO("[AssembleForwardOpenResponse]: sending error response\n");
     ConnectionObjectSetState(connection_object,
                              kConnectionObjectStateNonExistent);
     message_router_response->data_length = 10;
@@ -876,6 +892,7 @@ EipStatus AssembleForwardCloseResponse(
   CipMessageRouterResponse *message_router_response,
   EipUint16 extended_error_code
   ) {
+  OPENER_TRACE_INFO("[AssembleForwardCloseResponse]\n");
   /* write reply information in CPF struct dependent of pa_status */
   CipCommonPacketFormatData *common_data_packet_format_data =
     &g_common_packet_format_data_item;
@@ -917,6 +934,7 @@ EipStatus AssembleForwardCloseResponse(
 }
 
 CipConnectionObject *GetConnectedObject(const EipUint32 connection_id) {
+  OPENER_TRACE_INFO("[GetConnectedObject]\n");
   DoublyLinkedListNode *iterator = connection_list.first;
 
   while(NULL != iterator) {
@@ -933,6 +951,7 @@ CipConnectionObject *GetConnectedObject(const EipUint32 connection_id) {
 
 CipConnectionObject *GetConnectedOutputAssembly(
   const EipUint32 output_assembly_id) {
+  OPENER_TRACE_INFO("[GetConnectedOutputAssembly]\n");
   DoublyLinkedListNode *iterator = connection_list.first;
 
   while(NULL != iterator) {
@@ -1383,7 +1402,7 @@ EipUint8 ParseConnectionPath(
 }
 
 void CloseConnection(CipConnectionObject *RESTRICT connection_object) {
-
+  OPENER_TRACE_INFO("[CloseConnection]\n");
   if ( kConnectionObjectTransportClassTriggerTransportClass3 !=
        ConnectionObjectGetTransportClassTriggerTransportClass(connection_object) )
   {
@@ -1405,12 +1424,14 @@ void CloseConnection(CipConnectionObject *RESTRICT connection_object) {
 
 void AddNewActiveConnection(const CipConnectionObject *const connection_object)
 {
+  OPENER_TRACE_INFO("[AddNewActiveConnection]\n");
   DoublyLinkedListInsertAtHead(&connection_list, connection_object);
   ConnectionObjectSetState(connection_object,
                            kConnectionObjectStateEstablished);
 }
 
 void RemoveFromActiveConnections(CipConnectionObject *const connection_object) {
+  OPENER_TRACE_INFO("[RemoveFromActiveConnections]\n");
   for(DoublyLinkedListNode *iterator = connection_list.first; iterator != NULL;
       iterator = iterator->next) {
     if(iterator->data == connection_object) {
@@ -1422,6 +1443,7 @@ void RemoveFromActiveConnections(CipConnectionObject *const connection_object) {
 }
 
 EipBool8 IsConnectedOutputAssembly(const EipUint32 instance_number) {
+  OPENER_TRACE_INFO("[IsConnectedOutputAssembly]\n");
   EipBool8 is_connected = false;
 
   DoublyLinkedListNode *node = connection_list.first;
@@ -1444,6 +1466,7 @@ EipStatus AddConnectableObject(
   const EipUint32 class_id,
   OpenConnectionFunction open_connection_function
   ) {
+  OPENER_TRACE_INFO("[AddConnectableObject]\n");
   EipStatus status = kEipStatusError;
 
   /*parsing is now finished all data is available and check now establish the connection */
@@ -1463,7 +1486,7 @@ EipStatus AddConnectableObject(
 
 ConnectionManagementHandling *
 GetConnectionManagementEntry(const EipUint32 class_id) {
-
+  OPENER_TRACE_INFO("[GetConnectionManagementEntry]\n");
   ConnectionManagementHandling *connection_management_entry = NULL;
 
   for (size_t i = 0; i < g_kNumberOfConnectableObjects; ++i) {
@@ -1479,6 +1502,7 @@ EipStatus TriggerConnections(
   unsigned int output_assembly,
   unsigned int input_assembly
   ) {
+  OPENER_TRACE_INFO("[TriggerConnections]\n");
   EipStatus status = kEipStatusError;
 
   DoublyLinkedListNode *node = connection_list.first;
@@ -1506,7 +1530,7 @@ EipStatus TriggerConnections(
 void CheckForTimedOutConnectionsAndCloseTCPConnections(
   const CipConnectionObject *const connection_object,
   CloseSessionFunction CloseSessions) {
-
+  OPENER_TRACE_INFO("[CheckForTimedOutConnectionsAndCloseTCPConnections]\n");
   DoublyLinkedListNode *search_node = connection_list.first;
   bool non_timed_out_connection_found = false;
   while(NULL != search_node) {
@@ -1526,6 +1550,7 @@ void CheckForTimedOutConnectionsAndCloseTCPConnections(
 }
 
 void InitializeConnectionManagerData() {
+  OPENER_TRACE_INFO("[InitializeConnectionManagerData]\n");
   memset( g_connection_management_list, 0,
           g_kNumberOfConnectableObjects *
           sizeof(ConnectionManagementHandling) );

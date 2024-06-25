@@ -39,7 +39,7 @@
  *  in any case.
  */
 #define OPENER_WITH_TRACES 1 	// Włączenie
-#define OPENER_TRACE_LEVEL 0x0F // Wyswietlanie wszystkich logow: info, warn i err
+#define OPENER_TRACE_LEVEL 0x08 // Wyswietlanie wszystkich logow: info, warn i err
 
 #define OPENER_CIP_NUM_APPLICATION_SPECIFIC_CONNECTABLE_OBJECTS 1
 
@@ -90,13 +90,27 @@
 
 /** @brief The time in ms of the timer used in this implementations, time base for time-outs and production timers
  */
-static const MilliSeconds kOpenerTimerTickInMilliSeconds = 10;
+static const MilliSeconds kOpenerTimerTickInMilliSeconds = 5;
 
 #ifdef OPENER_WITH_TRACES
 /* If we have tracing enabled provide print tracing macro */
 #include <stdio.h>
+#include <sys/time.h>
 
-#define LOG_TRACE(...)  fprintf(stderr,__VA_ARGS__)
+// long long current_timestamp() {
+//     struct timeval te; 
+//     gettimeofday(&te, NULL); // get current time
+//     long long milliseconds = te.tv_sec*1000LL + te.tv_usec/1000; // calculate milliseconds
+//     // printf("milliseconds: %lld\n", milliseconds);
+//     return milliseconds;
+// }
+
+#define LOG_TRACE(...) \
+  struct timeval te; \
+  gettimeofday(&te, NULL); \
+  long long ts = te.tv_sec*1000LL + te.tv_usec/1000; \
+  fprintf(stderr, "%lld: ", ts); \
+  fprintf(stderr, __VA_ARGS__)
 
 /*#define PRINT_TRACE(args...)  fprintf(stderr,args);*/
 

@@ -27,6 +27,9 @@
 
 #define MAX_NO_OF_TCP_SOCKETS 10
 
+static long long sent_data = 0;
+static long long recv_data = 0;
+
 extern CipTcpIpNetworkInterfaceConfiguration interface_configuration_;
 
 /** @brief handle any connection request coming in the TCP server socket.
@@ -65,7 +68,7 @@ void RemoveSocketTimerFromList(const int socket_handle);
 *************************************************/
 
 EipStatus NetworkHandlerInitialize(void) {
-
+  OPENER_TRACE_INFO("[NetworkHandlerInitialize]\n");
   if( kEipStatusOk != NetworkHandlerInitializePlatform() ) {
     return kEipStatusError;
   }
@@ -255,10 +258,12 @@ EipStatus NetworkHandlerInitialize(void) {
 }
 
 void CloseUdpSocket(int socket_handle) {
+  OPENER_TRACE_INFO("[CloseUdpSocket]\n");
   CloseSocket(socket_handle);
 }
 
 void CloseTcpSocket(int socket_handle) {
+  OPENER_TRACE_INFO("[CloseTcpSocket]\n");
   RemoveSocketTimerFromList(socket_handle);
   CloseSocket(socket_handle);
 }
@@ -290,6 +295,7 @@ EipBool8 CheckSocketSet(int socket) {
 }
 
 void CheckAndHandleTcpListenerSocket(void) {
+  OPENER_TRACE_INFO("[CheckAndHandleTcpListenerSocket]\n");
   int new_socket = kEipInvalidSocket;
   /* see if this is a connection request to the TCP listener*/
   if ( true == CheckSocketSet(g_network_status.tcp_listener) ) {
@@ -345,9 +351,8 @@ void CheckAndHandleTcpListenerSocket(void) {
 }
 
 EipStatus NetworkHandlerProcessOnce(void) {
-
   read_socket = master_socket;
-
+  OPENER_TRACE_INFO("[NetworkHandlerProcessOnce]\n");
   g_time_value.tv_sec = 0;
   g_time_value.tv_usec = (
     g_network_status.elapsed_time < kOpenerTimerTickInMilliSeconds ?
@@ -360,6 +365,7 @@ EipStatus NetworkHandlerProcessOnce(void) {
   if (ready_socket == kEipInvalidSocket) {
     if (EINTR == errno) /* we have somehow been interrupted. The default behavior is to go back into the select loop. */
     {
+      OPENER_TRACE_INFO("[NetworkHandlerProcessOnce] Invalid socket\n");
       return kEipStatusOk;
     } else {
       int error_code = GetSocketErrorNumber();
@@ -373,7 +379,7 @@ EipStatus NetworkHandlerProcessOnce(void) {
   }
 
   if (ready_socket > 0) {
-
+    OPENER_TRACE_INFO("[NetworkHandlerProcessOnce] Call CheckAndHandleConsumingUdpSockets (recv)\n");
     CheckAndHandleTcpListenerSocket();
     CheckAndHandleUdpUnicastSocket();
     CheckAndHandleUdpGlobalBroadcastSocket();
@@ -389,6 +395,8 @@ EipStatus NetworkHandlerProcessOnce(void) {
         }
       }
     }
+  } else {
+    OPENER_TRACE_INFO("[NetworkHandlerProcessOnce] Bad socket (recv)\n");
   }
 
   for (size_t socket = 0; socket <= highest_socket_handle; socket++) {
@@ -410,6 +418,7 @@ EipStatus NetworkHandlerProcessOnce(void) {
    */
   if (g_network_status.elapsed_time >= kOpenerTimerTickInMilliSeconds) {
     /* call manage_connections() in connection manager every kOpenerTimerTickInMilliSeconds ms */
+    OPENER_TRACE_INFO("[NetworkHandlerProcessOnce] Call ManageConnections (send)\n");
     ManageConnections(g_network_status.elapsed_time);
     g_network_status.elapsed_time = 0;
   }
@@ -424,7 +433,7 @@ EipStatus NetworkHandlerFinish(void) {
 }
 
 void CheckAndHandleUdpGlobalBroadcastSocket(void) {
-
+  OPENER_TRACE_INFO("[CheckAndHandleUdpGlobalBroadcastSocket]\n");
   /* see if this is an unsolicited inbound UDP message */
   if ( true ==
        CheckSocketSet(g_network_status.udp_global_broadcast_listener) ) {
@@ -453,7 +462,7 @@ void CheckAndHandleUdpGlobalBroadcastSocket(void) {
       return;
     }
 
-    OPENER_TRACE_INFO("Data received on global broadcast UDP:\n");
+    OPENER_TRACE_INFO("[CheckAndHandleUdpGlobalBroadcastSocket] <-<- Receiving: Data received on global broadcast UDP:\n");
 
     const EipUint8 *receive_buffer = &incoming_message[0];
     int remaining_bytes = 0;
@@ -490,6 +499,7 @@ void CheckAndHandleUdpGlobalBroadcastSocket(void) {
 }
 
 void CheckAndHandleUdpUnicastSocket(void) {
+  OPENER_TRACE_INFO("[CheckAndHandleUdpUnicastSocket]\n");
   /* see if this is an unsolicited inbound UDP message */
   if ( true == CheckSocketSet(g_network_status.udp_unicast_listener) ) {
 
@@ -518,7 +528,7 @@ void CheckAndHandleUdpUnicastSocket(void) {
       return;
     }
 
-    OPENER_TRACE_INFO("Data received on UDP unicast:\n");
+    OPENER_TRACE_INFO("[CheckAndHandleUdpUnicastSocket] <-<- Receiving: Data received on UDP unicast:\n");
 
     EipUint8 *receive_buffer = &incoming_message[0];
     int remaining_bytes = 0;
@@ -553,10 +563,7 @@ EipStatus SendUdpData(struct sockaddr_in *address,
                       int socket_handle,
                       EipUint8 *data,
                       EipUint16 data_length) {
-
-
-
-  OPENER_TRACE_INFO("UDP port to be sent to: %x\n", ntohs(address->sin_port) );
+  OPENER_TRACE_INFO("[SendUdpData]\n");
   UDPHeader header = {
     .source_port = 2222,
     .destination_port = ntohs(address->sin_port),
@@ -574,6 +581,22 @@ EipStatus SendUdpData(struct sockaddr_in *address,
                                                         .ip_address,
                                                         address->sin_addr.s_addr) ) );
   UDPHeaderGenerate(&header, (char *)complete_message);
+
+  EipUint8 hb = complete_message[32];
+  OPENER_TRACE_INFO("[SendUdpData]: sending ->-> UDP port to be sent to: %x, heartbeat: %u\n", ntohs(address->sin_port), hb);
+  sent_data++;
+  OPENER_TRACE_INFO("[SendUdpData] SENT: %d\n", sent_data);
+  // printf("-----------------------------------\n");
+  // for (int i = 0; i < data_length + kUpdHeaderLength; i++) {
+  //   EipUint8 val = complete_message[i];
+  //   printf("%u, ", val);
+  // }
+  // printf("\n-----------------------------------\n");
+  // for (int i = 0; i < data_length + kUpdHeaderLength; i++) {
+  //   EipUint8 val = complete_message[i];
+  //   printf("%02x, ", val);
+  // }
+  // printf("\n-----------------------------------\n");
 
   int sent_length = sendto( socket_handle,
                             (char *) complete_message,
@@ -600,12 +623,12 @@ EipStatus SendUdpData(struct sockaddr_in *address,
       data_length);
     return kEipStatusError;
   }
-
+  OPENER_TRACE_INFO("[SendUdpData]: *****************************************************\n");
   return kEipStatusOk;
 }
 
 EipStatus HandleDataOnTcpSocket(int socket) {
-  OPENER_TRACE_INFO("Entering HandleDataOnTcpSocket for socket: %d\n", socket);
+  OPENER_TRACE_INFO("[HandleDataOnTcpSocket] Entering HandleDataOnTcpSocket for socket: %d\n", socket);
   int remaining_bytes = 0;
   long data_sent = PC_OPENER_ETHERNET_BUFFER_SIZE;
 
@@ -808,6 +831,7 @@ EipStatus HandleDataOnTcpSocket(int socket) {
 int CreateUdpSocket(UdpCommuncationDirection communication_direction,
                     struct sockaddr_in *socket_data,
                     CipUsint qos_for_socket) {
+  OPENER_TRACE_INFO("[CreateUdpSocket]\n");
   struct sockaddr_in peer_address;
   int new_socket = kEipInvalidSocket;
 
@@ -932,6 +956,7 @@ int CreateUdpSocket(UdpCommuncationDirection communication_direction,
 }
 
 void CheckAndHandleConsumingUdpSockets(void) {
+  OPENER_TRACE_INFO("[CheckAndHandleConsumingUdpSockets]\n");
   DoublyLinkedListNode *iterator = connection_list.first;
 
   CipConnectionObject *current_connection_object = NULL;
@@ -948,7 +973,8 @@ void CheckAndHandleConsumingUdpSockets(void) {
               == CheckSocketSet(
                 current_connection_object->socket[
                   kUdpCommuncationDirectionConsuming]) ) ) {
-      OPENER_TRACE_INFO("Processing UDP consuming message\n");
+      OPENER_TRACE_INFO("[CheckAndHandleConsumingUdpSockets] <-<- Receiving: Processing UDP consuming message\n");
+      OPENER_TRACE_INFO("[CheckAndHandleConsumingUdpSockets] <-<- Receiving from socket %d\n", current_connection_object->socket[kUdpCommuncationDirectionConsuming]);
       struct sockaddr_in from_address = {0};
       socklen_t from_address_length = sizeof(from_address);
       CipOctet incoming_message[PC_OPENER_ETHERNET_BUFFER_SIZE] = {0};
@@ -957,6 +983,9 @@ void CheckAndHandleConsumingUdpSockets(void) {
         current_connection_object->socket[kUdpCommuncationDirectionConsuming],
         incoming_message, sizeof(incoming_message), 0,
         (struct sockaddr *) &from_address, &from_address_length);
+
+      recv_data++;
+      OPENER_TRACE_INFO("[CheckAndHandleConsumingUdpSockets] RECEIVED: %d\n", recv_data);
       if (0 == received_size) {
         int error_code = GetSocketErrorNumber();
         char *error_message = GetErrorMessage(error_code);
@@ -996,13 +1025,14 @@ void CheckAndHandleConsumingUdpSockets(void) {
 
 
 void CloseSocket(const int socket_handle) {
-  OPENER_TRACE_INFO("networkhandler: closing socket %d\n", socket_handle);
+  OPENER_TRACE_INFO("[CloseSocket]\n");
+  OPENER_TRACE_INFO("[CloseSocket] networkhandler: closing socket %d\n", socket_handle);
 
   if (kEipInvalidSocket != socket_handle) {
     FD_CLR(socket_handle, &master_socket);
     CloseSocketPlatform(socket_handle);
   }
-  OPENER_TRACE_INFO("networkhandler: closing socket done %d\n", socket_handle);
+  OPENER_TRACE_INFO("[CloseSocket] networkhandler: closing socket done %d\n", socket_handle);
 }
 
 int GetMaxSocket(int socket1,

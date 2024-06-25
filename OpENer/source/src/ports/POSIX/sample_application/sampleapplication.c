@@ -76,7 +76,20 @@ EipUint8 g_assembly_data_explicit[32]; /* Explicit */
 
 bool firstConn = true;
 
+void ResetHeartbeat()
+{
+  //gfl_assembly_object_data[4] = 0;
+}
 
+void UpdateHeartBeat()
+{
+  gfl_assembly_object_data[4] = GetHeartBeat();
+}
+
+void updateBytes()
+{
+  //UpdateHeartBeat();
+}
 
 void trace_timestamp(char *args, int value)
 {
@@ -89,34 +102,36 @@ void trace_timestamp(char *args, int value)
   OPENER_TRACE_INFO("%s - %s %d\n", buffer, args, value);
 }
 
-// int socket_fd()
-// {
-//     struct sockaddr_un socket_address;
+int socket_fd()
+{
+    // struct sockaddr_un socket_address;
 
-//     int sfd = socket(AF_UNIX, SOCK_STREAM, 0);
+    // int sfd = socket(AF_UNIX, SOCK_STREAM, 0);
 
-//     if (sfd == -1) {
-//       puts("Bad socket file");
-//       exit(0);
-//     }
+    // if (sfd == -1) {
+    //   puts("Bad socket file");
+    //   exit(0);
+    // }
 
-//     memset(&socket_address, 0, sizeof(struct sockaddr_un));
-//     socket_address.sun_family = AF_UNIX;
-//     strncpy(socket_address.sun_path, UDS_SERVER_ADDRESS, sizeof(socket_address.sun_path) - 1);
+    // memset(&socket_address, 0, sizeof(struct sockaddr_un));
+    // socket_address.sun_family = AF_UNIX;
+    // strncpy(socket_address.sun_path, UDS_SERVER_ADDRESS, sizeof(socket_address.sun_path) - 1);
 
-//     if (connect(sfd, (struct sockaddr *) &socket_address,
-//                 sizeof(struct sockaddr_un)) == -1) {
-//       puts("Can not connect with socket");
-//       exit(0);
-//     }
-//     return sfd;
-// }
+    // if (connect(sfd, (struct sockaddr *) &socket_address,
+    //             sizeof(struct sockaddr_un)) == -1) {
+    //   puts("Can not connect with socket");
+    //   exit(0);
+    // }
+    // return sfd;
+
+    return 0;
+}
 
 /* local functions */
 
 void *uds_thread(void *arg) {
 
-    //int sfd = socket_fd();
+    int sfd = socket_fd();
 
     #if defined (GFL_ASSEMBLY_OBJECT) && defined (TCMS_ASSEMBLY_OBJECT)
     while (1) {
@@ -132,9 +147,11 @@ void *uds_thread(void *arg) {
         //recv(sfd, data_from_python_application, GFL_ASSEMBLY_OBJECT_SIZE, 0);
         memcpy( &gfl_assembly_object_data[HEADER_LENGTH], &data_from_python_application ,
               sizeof(data_from_python_application));
+        //UpdateHeartBeat();
+
         pthread_mutex_unlock(&uds_lock);
 
-        usleep(THREAD_SLEEP_MICROSECONDS);
+        usleep(10000);
     }
     #endif
 }
@@ -147,31 +164,16 @@ void AppendGFLHeaderToData()
   gfl_assembly_object_data[3] = 0;
 }
 
-void ResetHeartbeat()
-{
-  gfl_assembly_object_data[4] = 0;
-}
-
-static EipUint8 hb = 0;
-
-void UpdateHeartBeat()
-{
-  hb++;
-  gfl_assembly_object_data[4] = hb;
-}
-
-void updateBytes()
-{
-  UpdateHeartBeat();
-}
-
 EipStatus ApplicationInitialization(void) {
   /* create 3 assembly object instances*/
   pthread_mutex_init(&uds_lock, NULL);
 
-  pthread_t id_uds;
-  pthread_create(&id_uds, NULL, uds_thread, NULL);
+  //pthread_t id_uds;
+  //pthread_create(&id_uds, NULL, uds_thread, NULL);
   memset((void *)&gfl_assembly_object_data, 0, sizeof(unsigned short)*6);
+
+  memcpy( &gfl_assembly_object_data[HEADER_LENGTH], &data_from_python_application, sizeof(data_from_python_application));
+
   AppendGFLHeaderToData();
   ResetHeartbeat();
 
@@ -226,8 +228,9 @@ void CheckIoConnectionEvent(unsigned int output_assembly_id,
 
 EipStatus AfterAssemblyDataReceived(CipInstance *instance) {
   EipStatus status = kEipStatusOk;
-
-  OPENER_TRACE_INFO("\ninstance->instance_number is %d\n", instance->instance_number);
+  UpdateHeartBeat();
+  OPENER_TRACE_INFO("[AfterAssemblyDataReceived]\n");
+  //OPENER_TRACE_INFO("\ninstance->instance_number is %d\n", instance->instance_number);
 
   /*handle the data received e.g., update outputs of the device */
   switch (instance->instance_number) {
@@ -261,12 +264,13 @@ EipStatus AfterAssemblyDataReceived(CipInstance *instance) {
 }
 
 EipBool8 BeforeAssemblyDataSend(CipInstance *pa_pstInstance) {
+  OPENER_TRACE_INFO("[BeforeAssemblyDataSend]\n");
   /*update data to be sent e.g., read inputs of the device */
   /*In this sample app we mirror the data from out to inputs on data receive
    * therefore we need nothing to do here. Just return true to inform that
    * the data is new.
    */
-  UpdateHeartBeat();
+
   // if (gfl_assembly_object_data[1] >= 3 && firstConn) // Reseting sequence byte after connection manager handshake
   //     {
   //       firstConn = false;
@@ -320,7 +324,7 @@ void CipFree(void *data) {
 }
 
 void RunIdleChanged(EipUint32 run_idle_value) {
-  OPENER_TRACE_INFO("Run/Idle handler triggered\n");
+  OPENER_TRACE_INFO("[RunIdleChanged] Run/Idle handler triggered\n");
   if( (0x0001 & run_idle_value) == 1 ) {
     CipIdentitySetExtendedDeviceStatus(kAtLeastOneIoConnectionInRunMode);
   } else {

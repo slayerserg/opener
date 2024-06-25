@@ -120,6 +120,7 @@ EipStatus NotifyAssemblyConnectedDataReceived(CipInstance *const instance,
                                               const EipUint16 data_length) {
   /* empty path (path size = 0) need to be checked and taken care of in future */
   /* copy received data to Attribute 3 */
+  OPENER_TRACE_INFO("[NotifyAssemblyConnectedDataReceived]\n");
   CipByteArray *assembly_byte_array =
     (CipByteArray *) instance->attributes->data;
   if(assembly_byte_array->length != data_length) {
