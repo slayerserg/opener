@@ -228,7 +228,6 @@ void CheckIoConnectionEvent(unsigned int output_assembly_id,
 
 EipStatus AfterAssemblyDataReceived(CipInstance *instance) {
   EipStatus status = kEipStatusOk;
-  UpdateHeartBeat();
   OPENER_TRACE_INFO("[AfterAssemblyDataReceived]\n");
   //OPENER_TRACE_INFO("\ninstance->instance_number is %d\n", instance->instance_number);
 
@@ -265,6 +264,7 @@ EipStatus AfterAssemblyDataReceived(CipInstance *instance) {
 
 EipBool8 BeforeAssemblyDataSend(CipInstance *pa_pstInstance) {
   OPENER_TRACE_INFO("[BeforeAssemblyDataSend]\n");
+  UpdateHeartBeat();
   /*update data to be sent e.g., read inputs of the device */
   /*In this sample app we mirror the data from out to inputs on data receive
    * therefore we need nothing to do here. Just return true to inform that
