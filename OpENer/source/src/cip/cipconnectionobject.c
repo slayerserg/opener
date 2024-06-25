@@ -599,7 +599,7 @@ uint64_t ConnectionObjectCalculateRegularInactivityWatchdogTimerValue(
   uint64_t val = ( ( (uint64_t)(connection_object->o_to_t_requested_packet_interval) /
              (uint64_t)1000 ) <<
            (2 + connection_object->connection_timeout_multiplier) );
-  return val * 2;
+  return val * 5;
 }
 
 
