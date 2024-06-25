@@ -1,0 +1,11 @@
+
+doc/
+contrib/
+.project
+.cproject
+.settings/
+*.*~
+*~
+CMakeCache.txt
+*.patch
+.idea/
