@@ -1,2 +1,0 @@
-/usr/bin/ar qc libPLATFORM_GENERIC.a  CMakeFiles/PLATFORM_GENERIC.dir/generic_networkhandler.c.o CMakeFiles/PLATFORM_GENERIC.dir/socket_timer.c.o CMakeFiles/PLATFORM_GENERIC.dir/udp_protocol.c.o
-/usr/bin/ranlib libPLATFORM_GENERIC.a

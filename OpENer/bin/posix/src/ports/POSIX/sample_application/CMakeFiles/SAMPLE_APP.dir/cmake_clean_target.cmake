@@ -1,3 +1,0 @@
-file(REMOVE_RECURSE
-  "libSAMPLE_APP.a"
-)
