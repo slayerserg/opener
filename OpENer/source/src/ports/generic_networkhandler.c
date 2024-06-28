@@ -350,6 +350,9 @@ void CheckAndHandleTcpListenerSocket(void) {
   }
 }
 
+#include <poll.h>
+static int consum_socket = 0;
+
 EipStatus NetworkHandlerProcessOnce(void) {
   read_socket = master_socket;
   OPENER_TRACE_INFO("[NetworkHandlerProcessOnce]\n");
@@ -361,6 +364,23 @@ EipStatus NetworkHandlerProcessOnce(void) {
 
   int ready_socket = select(highest_socket_handle + 1, &read_socket, 0, 0,
                             &g_time_value);
+  
+  int ready_poll = 0;
+  struct pollfd pollfds[1];
+  
+  if (consum_socket != 0) {
+    pollfds[0].fd = consum_socket;
+    pollfds[0].events = POLLIN | POLLPRI;
+   
+    ready_poll = poll(pollfds, 1, 10);
+  }
+
+  if (ready_socket != ready_poll) {
+    OPENER_TRACE_INFO("[NetworkHandlerProcessOnce] MISSMATCH, select = %d, poll = %d\n", ready_socket, ready_poll);
+    if (ready_socket == 0 && ready_poll > 0) {
+      OPENER_TRACE_INFO("[NetworkHandlerProcessOnce] POLL\n");
+    }
+  }
 
   if (ready_socket == kEipInvalidSocket) {
     if (EINTR == errno) /* we have somehow been interrupted. The default behavior is to go back into the select loop. */
@@ -378,12 +398,18 @@ EipStatus NetworkHandlerProcessOnce(void) {
     }
   }
 
+  if (ready_poll > 0) {
+    if (pollfds[0].revents & POLLIN) {
+      CheckAndHandleConsumingUdpSockets();
+    }
+  }
+
   if (ready_socket > 0) {
     OPENER_TRACE_INFO("[NetworkHandlerProcessOnce] Call CheckAndHandleConsumingUdpSockets (recv)\n");
     CheckAndHandleTcpListenerSocket();
-    CheckAndHandleUdpUnicastSocket();
-    CheckAndHandleUdpGlobalBroadcastSocket();
-    CheckAndHandleConsumingUdpSockets();
+    //CheckAndHandleUdpUnicastSocket();
+    //CheckAndHandleUdpGlobalBroadcastSocket();
+    //CheckAndHandleConsumingUdpSockets();
 
     for (size_t socket = 0; socket <= highest_socket_handle; socket++) {
       if ( true == CheckSocketSet(socket) ) {
@@ -839,6 +865,7 @@ int CreateUdpSocket(UdpCommuncationDirection communication_direction,
   /* create a new UDP socket */
   if(kUdpCommuncationDirectionConsuming == communication_direction) {
     new_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    consum_socket = new_socket;
   }
 
   if(kUdpCommuncationDirectionProducing == communication_direction) {
@@ -968,11 +995,11 @@ void CheckAndHandleConsumingUdpSockets(void) {
 
     if ( (kEipInvalidSocket
           != current_connection_object->socket[
-            kUdpCommuncationDirectionConsuming])
-         && ( true
-              == CheckSocketSet(
-                current_connection_object->socket[
-                  kUdpCommuncationDirectionConsuming]) ) ) {
+            kUdpCommuncationDirectionConsuming])) {
+         // && ( true
+         //      == CheckSocketSet(
+         //        current_connection_object->socket[
+         //          kUdpCommuncationDirectionConsuming]) ) ) {
       OPENER_TRACE_INFO("[CheckAndHandleConsumingUdpSockets] <-<- Receiving: Processing UDP consuming message\n");
       OPENER_TRACE_INFO("[CheckAndHandleConsumingUdpSockets] <-<- Receiving from socket %d\n", current_connection_object->socket[kUdpCommuncationDirectionConsuming]);
       struct sockaddr_in from_address = {0};
