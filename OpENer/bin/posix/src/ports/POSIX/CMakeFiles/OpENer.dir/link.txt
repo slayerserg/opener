@@ -1,0 +1,1 @@
+/usr/bin/cc  -Wall -std=c99 -Werror=implicit-function-declaration  -rdynamic CMakeFiles/OpENer.dir/main.c.o  -o OpENer  ../../cip/libCIP.a ../../utils/libUtils.a sample_application/libSAMPLE_APP.a ../../enet_encap/libENET_ENCAP.a ../libPLATFORM_GENERIC.a libPOSIXPLATFORM.a -lrt -lcap -lpthread ../../utils/libUtils.a 
