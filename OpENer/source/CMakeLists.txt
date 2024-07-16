@@ -12,6 +12,8 @@ project( OpENer LANGUAGES C VERSION 2.3 )
 # Project version                     #
 #######################################
 
+set( OpENer_PLATFORM "POSIX" )
+
 if( NOT DEFINED OpENer_Device_Config_Vendor_Id )
   set( OpENer_Device_Config_Vendor_Id 1 CACHE STRING "Device Vendor ID" )
 endif()
@@ -30,7 +32,8 @@ configure_file(
 	"${PROJECT_BINARY_DIR}/src/ports/devicedata.h"
 	)
 
-find_path( OpENer_BUILDSUPPORT_DIR OpENer.cmake ${PROJECT_SOURCE_DIR}/buildsupport )
+set( OpENer_BUILDSUPPORT_DIR "${PROJECT_SOURCE_DIR}/buildsupport" )
+#find_path( OpENer_BUILDSUPPORT_DIR OpENer.cmake ${PROJECT_SOURCE_DIR}/buildsupport )
  
 INCLUDE( ${OpENer_BUILDSUPPORT_DIR}/OpENer.cmake )
 
