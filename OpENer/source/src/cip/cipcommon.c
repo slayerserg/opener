@@ -34,6 +34,7 @@ int EncodeEPath(CipEpath *epath,
                 EipUint8 **message);
 
 void CipStackInit(const EipUint16 unique_connection_id) {
+  OPENER_TRACE_INFO("[CipStackInit]\n");
   EncapsulationInit();
   /* The message router is the first CIP object be initialized!!! */
   EipStatus eip_status = CipMessageRouterInit();
@@ -59,6 +60,7 @@ void CipStackInit(const EipUint16 unique_connection_id) {
 }
 
 void ShutdownCipStack(void) {
+  OPENER_TRACE_INFO("[ShutdownCipStack]\n");
   /* First close all connections */
   CloseAllConnections();
   /* Than free the sockets of currently active encapsulation sessions */
@@ -77,7 +79,7 @@ EipStatus NotifyClass(const CipClass *RESTRICT const cip_class,
                       CipMessageRouterResponse *const message_router_response,
                       struct sockaddr *originator_address,
                       const int encapsulation_session) {
-
+  OPENER_TRACE_INFO("[NotifyClass]\n");
   /* find the instance: if instNr==0, the class is addressed, else find the instance */
   EipUint16 instance_number =
     message_router_request->request_path.instance_number;                     /* get the instance number */
@@ -451,7 +453,7 @@ int EncodeData(const EipUint8 cip_type,
                const void *const cip_data,
                EipUint8 **cip_message) {
   int counter = 0;
-
+  OPENER_TRACE_INFO("[EncodeData]\n");
   switch (cip_type)
   /* check the data type of attribute */
   {
@@ -617,7 +619,7 @@ int DecodeData(const EipUint8 cip_data_type,
                void *const cip_data,
                const EipUint8 **const cip_message) {
   int number_of_decoded_bytes = -1;
-
+  OPENER_TRACE_INFO("[DecodeData]\n");
   switch (cip_data_type)
   /* check the data type of attribute */
   {

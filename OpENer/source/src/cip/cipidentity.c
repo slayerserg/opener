@@ -183,7 +183,15 @@ EipStatus CipIdentityInit() {
 }
 
 void CipIdentitySetExtendedDeviceStatus(CipIdentityExtendedStatus extended_status) {
-  OPENER_TRACE_INFO("Setting extended status: %x", extended_status);
+  OPENER_TRACE_INFO("[CipIdentitySetExtendedDeviceStatus] Setting extended status: %x\n", extended_status);
   status_ &= ~(0x70);
   status_ |= extended_status;
+}
+
+void SetHeartBeat(EipUint8 hb) {
+  h_beat = hb;
+}
+
+EipUint8 GetHeartBeat() {
+  return h_beat;
 }
