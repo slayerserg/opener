@@ -3,9 +3,9 @@ add_subdirectory(sample_application)
 set( PLATFORM_SPEC_SRC networkhandler.c opener_error.c networkconfig.c)
 
 #######################################
-# OpENer RT patch	                    #
+# OpENer RT patch	              #
 #######################################
-set( OpENer_RT OFF CACHE BOOL "Activate OpENer RT" )
+set( OpENer_RT ON CACHE BOOL "Activate OpENer RT" )
 if(OpENer_RT)
   set( OpENer_RT_Additional_Stacksize "10240" CACHE STRING "Additional stack size above the defined minimum")
   add_definitions( -DOPENER_RT )
@@ -31,8 +31,6 @@ opener_platform_support("INCLUDES")
 
 add_library( ${OpENer_PLATFORM}PLATFORM ${PLATFORM_SPEC_SRC})
 # Mark executables and/or libraries for installation
-
-install(TARGETS OpENer DESTINATION bin)
 
 if( OPENER_INSTALL_AS_LIB )
   install(TARGETS ${OpENer_PLATFORM}PLATFORM
@@ -67,6 +65,6 @@ if( NOT OpENer_TESTS)
   endif()
 endif()
 
-if(NOT ${CMAKE_INSTALL_BINDIR} STREQUAL "")
-  install (PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/OpENer DESTINATION ${CMAKE_INSTALL_FULL_BINDIR})
-endif()
+#if(NOT ${CMAKE_INSTALL_BINDIR} STREQUAL "")
+  install (PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/OpENer DESTINATION bin)
+#endif()
