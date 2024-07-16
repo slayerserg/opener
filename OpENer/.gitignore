@@ -1,6 +1,8 @@
-
+bin/
 doc/
 contrib/
+source/src/cip_objects/
+!source/src/cip_objects/CMakeLists.txt
 .project
 .cproject
 .settings/

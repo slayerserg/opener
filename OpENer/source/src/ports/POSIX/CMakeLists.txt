@@ -42,6 +42,4 @@ endif( BUILD_SHARED_LIBS )
 
 add_executable(OpENer main.c)
 
-install(TARGETS OpENer DESTINATION bin)
-
 target_link_libraries( OpENer CIP Utils SAMPLE_APP ENET_ENCAP PLATFORM_GENERIC ${OpENer_PLATFORM}PLATFORM ${PLATFORM_SPEC_LIBS} ${OpENer_ADD_CIP_OBJECTS} rt cap pthread)

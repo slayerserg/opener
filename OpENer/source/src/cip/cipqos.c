@@ -18,11 +18,11 @@
 CipUsint q_frames_enable = 0; /**< Enables or disable sending 802.1Q frames on CIP and IEEE 1588 messages */
 CipUsint dscp_event = 59; /**< DSCP value for event messages*/
 CipUsint dscp_general = 47; /**< DSCP value for general messages*/
-CipUsint dscp_urgent = 48; /**< DSCP value for CIP transport class 0/1 Urgent priority messages */
-CipUsint dscp_scheduled = 32; /**< DSCP value for CIP transport class 0/1 Scheduled priority messages*/
-CipUsint dscp_high = 16; /**< DSCP value for CIP transport class 0/1 High priority messages */
-CipUsint dscp_low = 0; /**< DSCP value for CIP transport class 0/1 low priority messages */
-CipUsint dscp_explicit = 0; /**< DSCP value for CIP explicit messages (transport class 2/3 and UCMM)
+CipUsint dscp_urgent = 55; /**< DSCP value for CIP transport class 0/1 Urgent priority messages */
+CipUsint dscp_scheduled = 47; /**< DSCP value for CIP transport class 0/1 Scheduled priority messages*/
+CipUsint dscp_high = 43; /**< DSCP value for CIP transport class 0/1 High priority messages */
+CipUsint dscp_low = 31; /**< DSCP value for CIP transport class 0/1 low priority messages */
+CipUsint dscp_explicit = 27; /**< DSCP value for CIP explicit messages (transport class 2/3 and UCMM)
                                 and all other EtherNet/IP encapsulation messages */
 
 /************** Functions ****************************************/

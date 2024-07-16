@@ -276,7 +276,6 @@ EipStatus EstablishIoConnection(
   CipConnectionObject *RESTRICT const connection_object,
   EipUint16 *const extended_error
   ) {
-  OPENER_TRACE_INFO("[EstablishIoConnection]\n");
   EipStatus eip_status = kEipStatusOk;
 
   CipConnectionObject *io_connection_object = GetIoConnectionForConnectionData(
@@ -368,7 +367,6 @@ EipStatus OpenConsumingPointToPointConnection(
   CipConnectionObject *const connection_object,
   CipCommonPacketFormatData *const common_packet_format_data
   ) {
-  OPENER_TRACE_INFO("[OpenConsumingPointToPointConnection]\n");
 
   int j = 0;
 
@@ -414,7 +412,6 @@ EipStatus OpenProducingPointToPointConnection(
   CipConnectionObject *connection_object,
   CipCommonPacketFormatData *common_packet_format_data
   ) {
-  OPENER_TRACE_INFO("[OpenProducingPointToPointConnection]\n");
   in_port_t port = htons(kOpenerEipIoUdpPort); /* the default port to be used if no port information is part of the forward open request */
 
   if (kCipItemIdSocketAddressInfoTargetToOriginator
@@ -450,7 +447,6 @@ EipStatus OpenProducingMulticastConnection(
   CipConnectionObject *connection_object,
   CipCommonPacketFormatData *common_packet_format_data
   ) {
-  OPENER_TRACE_INFO("[OpenProducingMulticastConnection]\n");
   CipConnectionObject *existing_connection_object =
     GetExistingProducerMulticastConnection(
       connection_object->produced_path.instance_id);
@@ -529,7 +525,6 @@ EipStatus OpenMulticastConnection(
   CipConnectionObject *connection_object,
   CipCommonPacketFormatData *common_packet_format_data
   ) {
-  OPENER_TRACE_INFO("[OpenMulticastConnection]\n");
   int j = -1;
 
   int address_info_item_which_contains_o_to_t = -1;
@@ -625,7 +620,7 @@ EipStatus OpenMulticastConnection(
 }
 
 EipUint16 HandleConfigData(CipConnectionObject *connection_object) {
-  OPENER_TRACE_INFO("[HandleConfigData]\n");
+
   CipClass *const assembly_class = GetCipClass(kCipAssemblyClassCode);
   EipUint16 connection_manager_status = 0;
   CipInstance *config_instance = GetCipInstance(
@@ -676,7 +671,7 @@ EipUint16 HandleConfigData(CipConnectionObject *connection_object) {
 }
 
 void CloseIoConnection(CipConnectionObject *connection_object) {
-  OPENER_TRACE_INFO("[CloseIoConnection]\n");
+
   CheckIoConnectionEvent(connection_object->consumed_path.instance_id,
                          connection_object->produced_path.instance_id,
                          kIoConnectionEventClosed);
@@ -732,7 +727,6 @@ void CloseIoConnection(CipConnectionObject *connection_object) {
 }
 
 void HandleIoConnectionTimeOut(CipConnectionObject *connection_object) {
-  OPENER_TRACE_INFO("[HandleIoConnectionTimeOut]\n");
   CheckIoConnectionEvent(connection_object->produced_path.instance_id,
                          connection_object->consumed_path.instance_id,
                          kIoConnectionEventTimedOut);
@@ -787,7 +781,7 @@ void HandleIoConnectionTimeOut(CipConnectionObject *connection_object) {
 EipStatus SendConnectedData(CipConnectionObject *connection_object) {
 
   /* TODO think of adding an own send buffer to each connection object in order to preset up the whole message on connection opening and just change the variable data items e.g., sequence number */
-  OPENER_TRACE_INFO("[SendConnectedData]\n");
+
   CipCommonPacketFormatData *common_packet_format_data =
     &g_common_packet_format_data_item;
   /* TODO think on adding a CPF data item to the S_CIP_ConnectionObject in order to remove the code here or even better allocate memory in the connection object for storing the message to send and just change the application data*/
@@ -878,8 +872,8 @@ EipStatus HandleReceivedIoConnectionData(
   const EipUint8 *data,
   EipUint16 data_length
   ) {
-  OPENER_TRACE_INFO("[HandleReceivedIoConnectionData]\n");
-  OPENER_TRACE_INFO("[HandleReceivedIoConnectionData] Starting data length: %d\n", data_length);
+
+  OPENER_TRACE_INFO("Starting data length: %d\n", data_length);
   bool no_new_data = false;
   /* check class 1 sequence number*/
   if (kConnectionObjectTransportClassTriggerTransportClass1 ==
@@ -894,12 +888,12 @@ EipStatus HandleReceivedIoConnectionData(
     data_length -= 2;
   }
 
-  OPENER_TRACE_INFO("[HandleReceivedIoConnectionData] data length after sequence count: %d\n", data_length);
+  OPENER_TRACE_INFO("data length after sequence count: %d\n", data_length);
   if (data_length > 0) {
     /* we have no heartbeat connection */
 #ifdef OPENER_CONSUMED_DATA_HAS_RUN_IDLE_HEADER
     EipUint32 nRunIdleBuf = GetDintFromMessage( &(data) );
-    OPENER_TRACE_INFO("[HandleReceivedIoConnectionData] Run/Idle handler: 0x%x\n", nRunIdleBuf);
+    OPENER_TRACE_INFO("Run/Idle handler: 0x%x", nRunIdleBuf);
     const uint32_t kRunBitMask = 0x0001;
     if( (kRunBitMask & nRunIdleBuf) == 1 ) {
       CipIdentitySetExtendedDeviceStatus(kAtLeastOneIoConnectionInRunMode);
@@ -927,7 +921,7 @@ EipStatus HandleReceivedIoConnectionData(
 }
 
 EipStatus OpenCommunicationChannels(CipConnectionObject *connection_object) {
-  OPENER_TRACE_INFO("[OpenCommunicationChannels]\n");
+
   EipStatus eip_status = kEipStatusOk;
   /*get pointer to the CPF data, currently we have just one global instance of the struct. This may change in the future*/
   CipCommonPacketFormatData *common_packet_format_data =
@@ -985,7 +979,6 @@ EipStatus OpenCommunicationChannels(CipConnectionObject *connection_object) {
 
 void CloseCommunicationChannelsAndRemoveFromActiveConnectionsList(
   CipConnectionObject *connection_object) {
-  OPENER_TRACE_INFO("[CloseCommunicationChannelsAndRemoveFromActiveConnectionsList]\n");
   CloseUdpSocket(
     connection_object->socket[kUdpCommuncationDirectionConsuming]);
 

@@ -421,7 +421,6 @@ CipUint ConnectionObjectGetExpectedPacketRate(
 
 CipUint ConnectionObjectGetRequestedPacketInterval(
   const CipConnectionObject *const connection_object) {
-  OPENER_TRACE_INFO("[ConnectionObjectGetRequestedPacketInterval] t_to_o_requested_packet_interval = %lu\n", connection_object->t_to_o_requested_packet_interval);
   CipUdint remainder_to_resolution =
     (connection_object->t_to_o_requested_packet_interval) %
     (kOpenerTimerTickInMilliSeconds * 1000);
@@ -596,10 +595,9 @@ void ConnectionObjectResetLastPackageInactivityTimerValue(
 
 uint64_t ConnectionObjectCalculateRegularInactivityWatchdogTimerValue(
   const CipConnectionObject *const connection_object) {
-  uint64_t val = ( ( (uint64_t)(connection_object->o_to_t_requested_packet_interval) /
+  return ( ( (uint64_t)(connection_object->o_to_t_requested_packet_interval) /
              (uint64_t)1000 ) <<
            (2 + connection_object->connection_timeout_multiplier) );
-  return val * 5;
 }
 
 
@@ -657,7 +655,6 @@ CipUdint ConnectionObjectGetOToTRequestedPacketInterval(
 void ConnectionObjectSetOToTRequestedPacketInterval(
   CipConnectionObject *connection_object,
   const CipUdint requested_packet_interval) {
-  OPENER_TRACE_INFO("[ConnectionObjectSetOToTRequestedPacketInterval] o_to_t_requested_packet_interval = %d\n", requested_packet_interval);
   connection_object->o_to_t_requested_packet_interval =
     requested_packet_interval;
 }
