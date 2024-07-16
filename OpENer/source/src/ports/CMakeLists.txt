@@ -3,6 +3,7 @@
 #######################################
 
 add_subdirectory( ${OpENer_PLATFORM} )
+add_subdirectory( nvdata )
 
 #######################################
 # Add common includes                 #
@@ -14,11 +15,11 @@ opener_common_includes()
 #######################################
 opener_platform_support("INCLUDES")
 
-set( PLATFORM_GENERIC_SRC generic_networkhandler.c socket_timer.c  udp_protocol.c)
+set( PLATFORM_GENERIC_SRC generic_networkhandler.c socket_timer.c )
 
-add_library( PLATFORM_GENERIC ${PLATFORM_GENERIC_SRC})
+add_library( PLATFORM_GENERIC ${PLATFORM_GENERIC_SRC} )
 
-if( BUILD_SHARED_LIBS )
+if( OPENER_INSTALL_AS_LIB )
   install(TARGETS PLATFORM_GENERIC
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -31,5 +32,5 @@ if( BUILD_SHARED_LIBS )
       PATTERN "*.h"
       PATTERN "sample_application" EXCLUDE
    )
-endif( BUILD_SHARED_LIBS )
+endif()
 

@@ -10,6 +10,8 @@
  *
  */
 
+#undef _GNU_SOURCE  /* Force the use of the XSI compliant strerror_r() function. */
+
 #include <errno.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -19,7 +21,7 @@
 
 const int kErrorMessageBufferSize = 255;
 
-int GetSocketErrorNumber() {
+int GetSocketErrorNumber(void) {
   return errno;
 }
 

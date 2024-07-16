@@ -160,7 +160,7 @@ typedef enum {
 #define SEQ_GEQ16(a, b) ( (short)( (a) - (b) ) >= 0 )
 
 /** @brief Connection Manager class code */
-static const int g_kCipConnectionManagerClassCode = 0x06;
+static const CipUint kCipConnectionManagerClassCode = 0x06U;
 
 /* public functions */
 
@@ -199,7 +199,7 @@ CipConnectionObject *GetConnectedOutputAssembly(
 void CloseConnection(CipConnectionObject *RESTRICT connection_object);
 
 /* TODO: Missing documentation */
-EipBool8 IsConnectedOutputAssembly(const EipUint32 instance_number);
+EipBool8 IsConnectedOutputAssembly(const CipInstanceNum instance_number);
 
 /** @brief Insert the given connection object to the list of currently active
  *  and managed connections.
@@ -210,7 +210,7 @@ EipBool8 IsConnectedOutputAssembly(const EipUint32 instance_number);
  *
  * @param connection_object pointer to the connection object to be added.
  */
-void AddNewActiveConnection(const CipConnectionObject *const connection_object);
+void AddNewActiveConnection(CipConnectionObject *const connection_object);
 
 /** @brief Removes connection from the list of active connections
  *
@@ -219,7 +219,7 @@ void AddNewActiveConnection(const CipConnectionObject *const connection_object);
 void RemoveFromActiveConnections(CipConnectionObject *const connection_object);
 
 
-CipUint GetConnectionId(void);
+CipUdint GetConnectionId(void);
 
 typedef void (*CloseSessionFunction)(const CipConnectionObject *const
                                      connection_object);

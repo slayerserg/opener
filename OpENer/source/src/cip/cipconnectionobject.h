@@ -29,7 +29,7 @@ typedef enum {
 } ConnectionObjectState;
 
 typedef enum {
-  kConnectionObjectInstanceTypeInvalid = -1, /**< Invalid instance type - shall never occur! */
+  kConnectionObjectInstanceTypeInvalid = (CipUsint)(~0), /**< Invalid instance type - shall never occur! */
   kConnectionObjectInstanceTypeExplicitMessaging = 0, /**< Connection is an explicit messaging connection */
   kConnectionObjectInstanceTypeIO, /**< Connection is an I/O connection */
   kConnectionObjectInstanceTypeIOExclusiveOwner, /**< Also I/O connection, only for easy differentiation */
@@ -82,7 +82,8 @@ typedef enum {
   kConnectionObjectPriorityLow = 0,
   kConnectionObjectPriorityHigh,
   kConnectionObjectPriorityScheduled,
-  kConnectionObjectPriorityUrgent
+  kConnectionObjectPriorityUrgent,
+  kConnectionObjectPriorityExplicit
 } ConnectionObjectPriority;
 
 typedef enum {
@@ -143,11 +144,13 @@ struct cip_connection_object {
   CipUint originator_vendor_id;
   CipUdint originator_serial_number;
 
+  CipUint connection_number;
+
   CipUdint o_to_t_requested_packet_interval;
-  CipWord o_to_t_network_connection_parameters;
+  CipDword o_to_t_network_connection_parameters;
 
   CipUdint t_to_o_requested_packet_interval;
-  CipWord t_to_o_network_connection_parameters;
+  CipDword t_to_o_network_connection_parameters;
 
   CipUint sequence_count_producing; /**< sequence Count for Class 1 Producing
                                          Connections */
@@ -164,7 +167,9 @@ struct cip_connection_object {
                                                    Producing Connections may have a
                                                    different
                                                    value than SequenceCountProducing */
-
+  CipBool eip_first_level_sequence_count_received; /**< False if eip_level_sequence_count_consuming
+                                                   hasn't been initialized with a sequence
+                                                   count yet, true otherwise */
   CipInt correct_originator_to_target_size;
   CipInt correct_target_to_originator_size;
 
@@ -177,7 +182,7 @@ struct cip_connection_object {
                                               for scanning if the right packet is
                                               arriving */
 
-  size_t associated_encapsulation_session; /* The session handle ID via which the forward open was sent */
+  CipSessionHandle associated_encapsulation_session; /* The session handle ID via which the forward open was sent */
 
   /* pointers to connection handling functions */
   CipConnectionStateHandler current_state_handler;
@@ -188,7 +193,11 @@ struct cip_connection_object {
   ConnectionReceiveDataFunction connection_receive_data_function;
 
   ENIPMessage last_reply_sent;
+  CipBool is_large_forward_open;
 };
+
+/** @brief Extern declaration of the global connection list */
+extern DoublyLinkedList connection_list;
 
 DoublyLinkedListNode *CipConnectionObjectListArrayAllocator(
   );
@@ -354,6 +363,15 @@ void ConnectionObjectSetOriginatorSerialNumber(
   CipConnectionObject *connection_object,
   CipUdint originator_serial_number);
 
+void ConnectionObjectGetConnectionNumber(
+  CipConnectionObject *connection_object,
+  const CipUint connection_number);
+
+void ConnectionObjectSetConnectionNumber(
+  CipConnectionObject *connection_object);
+
+CipUint GenerateRandomConnectionNumber(void);
+
 CipUdint ConnectionObjectGetOToTRequestedPacketInterval(
   const CipConnectionObject *const connection_object);
 
@@ -383,6 +401,14 @@ CipUdint ConnectionObjectGetTToORequestedPacketInterval(
 void ConnectionObjectSetTToORequestedPacketInterval(
   CipConnectionObject *connection_object,
   const CipUdint requested_packet_interval);
+
+void ConnectionObjectSetTToONetworkConnectionParameters(
+  CipConnectionObject *connection_object,
+  const CipDword connection_parameters);
+
+void ConnectionObjectSetOToTNetworkConnectionParameters(
+  CipConnectionObject *connection_object,
+  const CipDword connection_parameters);
 
 bool ConnectionObjectIsTToORedundantOwner(
   const CipConnectionObject *const connection_object);

@@ -42,13 +42,13 @@ void DoublyLinkedListInitialize(DoublyLinkedList *list,
 void DoublyLinkedListDestroy(DoublyLinkedList *list);
 
 DoublyLinkedListNode *DoublyLinkedListNodeCreate(const void *const data,
-                                                 NodeMemoryAllocator allocator);
+                                                 NodeMemoryAllocator const allocator);
 
 void DoublyLinkedListNodeDestroy(const DoublyLinkedList *const list,
                                  DoublyLinkedListNode **node);
 
 void DoublyLinkedListInsertAtHead(DoublyLinkedList *const list,
-                                  void *data);
+                                  const void *const data);
 
 void DoublyLinkedListInsertAtTail(DoublyLinkedList *const list,
                                   const void *const data);

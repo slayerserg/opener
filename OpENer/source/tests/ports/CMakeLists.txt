@@ -1,7 +1,15 @@
 
+#######################################
+# Add common includes                 #
+#######################################
 opener_common_includes()
 
-set( PortsTestSrc socket_timer_tests.cpp )
+#######################################
+# Add platform-specific includes      #
+#######################################
+opener_platform_support("INCLUDES")
+
+set( PortsTestSrc socket_timer_tests.cpp)
 
 include_directories( ${SRC_DIR}/ports )
 

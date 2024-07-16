@@ -13,42 +13,94 @@
 #include "ciptypes.h"
 #include "ciperror.h"
 
+#if defined(STM32)	/** STM32 target -> uses a struct for the network interface */
+#define TcpIpInterface struct netif
+#else		/** other targets -> string for the network interface */
+#define TcpIpInterface const char
+#endif		/** other targets */
+
 /**  @defgroup CIP_API OpENer User interface
  * @brief This is the public interface of the OpENer. It provides all function
  * needed to implement an EtherNet/IP enabled slave-device.
  */
 
 /** @ingroup CIP_API
- * @brief Configure the data of the network interface of the device
+ * @brief Read network configuration data from specified hardware interface
  *
- *  This function setup the data of the network interface needed by OpENer.
- *  The multicast address is automatically calculated from he given data.
+ * @param  iface     address specifying the network interface
+ * @param  iface_cfg address of interface configuration structure
+ * @return           kEipStatusOk on success,
+ *                   kEipStatusError on error with @p errno set
  *
- *  @param ip_address    the current IP address of the device
- *  @param subnet_mask  the subnet mask to be used
- *  @param gateway_address     the gateway address
- *  @return kEipStatusOk if the configuring worked otherwise kEipStatusError
+ * This function reads all information needed to fill the iface_cfg structure
+ *  of type @ref CipTcpIpInterfaceConfiguration from the hardware interface
+ *  specified by the iface string.
+ *
  */
-EipStatus
-ConfigureNetworkInterface(const char *const network_interface);
+EipStatus IfaceGetConfiguration(TcpIpInterface *iface,
+                                CipTcpIpInterfaceConfiguration *iface_cfg);
 
 /** @ingroup CIP_API
- * @brief Configure the MAC address of the device
+ * @brief Read and return the MAC address of the Ethernet interface
  *
- *  @param mac_address  the hardware MAC address of the network interface
+ * @param  iface             address specifying the network interface
+ * @param  physical_address  hardware MAC address of the network interface
+ * @return                   kEipStatusOk: all fine
+ *                           kEipStatusError: failure, errno set
  */
-void ConfigureMacAddress(const char *network_interface);
+EipStatus IfaceGetMacAddress(TcpIpInterface *iface,
+                             uint8_t *const physical_address);
 
 /** @ingroup CIP_API
- * @brief Configure the domain name of the device
- * @param domain_name the domain name to be used
+ * @brief Wait for the network interface having an IP address
+ *
+ * @param  iface      address specifying the network interface
+ * @param  timeout    in seconds; max: INT_MAX/10, -1: wait for ever
+ * @param  abort_wait stop waiting if this parameter becomes zero
+ * @return            kEipStatusOk on success,
+ *                    kEipStatusError on error with @p errno set
+ *
+ * This function waits for the network interface getting an IP address but
+ *  only @p timeout seconds (set to -1 to wait for ever).
+ * The polling wait process can be aborted by setting @p abort_wait to
+ *  a non zero value from another thread.
  */
-void ConfigureDomainName(void);
+EipStatus IfaceWaitForIp(TcpIpInterface *const iface,
+                         int timeout,
+                         volatile int *const abort_wait);
+
+#if defined(STM32)  /** STM32 target, the hostname is linked to the network interface */
 /** @ingroup CIP_API
- * @brief Configure the host name of the device
- * @param host_name the host name to be used
+ * @brief Get host name from platform
+ *
+ * @param  iface      address specifying the network interface
+ * @param  hostname   address of CipString destination structure
+ *
+ * This function reads the host name from the platform and returns it
+ *  via the hostname parameter.
  */
-void ConfigureHostName(void);
+void GetHostName(TcpIpInterface *iface,
+                 CipString *hostname);
+#else   /** other targets */
+/** @ingroup CIP_API
+ * @brief Get host name from platform
+ *
+ * @param  hostname  address of CipString destination structure
+ *
+ * This function reads the host name from the platform and returns it
+ *  via the hostname parameter.
+ */
+void GetHostName(CipString *hostname);
+#endif    /** other targets */
+
+/** @ingroup CIP_API
+ * @brief Set the CIP revision of the device's identity object.
+ *
+ * @param major unsigned 8 bit major revision
+ * @param minor unsigned 8 bit minor revision
+ */
+void SetDeviceRevision(EipUint8 major,
+                       EipUint8 minor);
 
 /** @ingroup CIP_API
  * @brief Set the serial number of the device's identity object.
@@ -58,11 +110,66 @@ void ConfigureHostName(void);
 void SetDeviceSerialNumber(const EipUint32 serial_number);
 
 /** @ingroup CIP_API
- * @brief Set the current status of the device.
+ * @brief Set the DeviceType of the device's identity object.
  *
- * @param device_status the new status value
+ * @param type 16 bit unsigned number representing the CIP device type
  */
-void SetDeviceStatus(const EipUint16 device_status);
+void SetDeviceType(const EipUint16 type);
+
+/** @ingroup CIP_API
+ * @brief Set the ProductCode of the device's identity object.
+ *
+ * @param type 16 bit unsigned number representing the product code
+ */
+void SetDeviceProductCode(const EipUint16 code);
+
+/** @ingroup CIP_API
+ * @brief Set the device's Status word also updating the Extended Device Status
+ *
+ * @param status    complete Identity Object's Status word content
+ *
+ *  This function sets the status flags and the internal state of the Extended
+ *  Device Status field in Identity object's ext_status member.
+ */
+void SetDeviceStatus(const CipWord status);
+
+/** @ingroup CIP_API
+ * @breif Set device's CIP VendorId
+ *
+ * @param vendor_id vendor ID, can be zero
+ *
+ * When OpENer is used as a library, multiple CIP adapters may use it
+ * and may want to set the VendorId.  Note: some applications allow
+ * the use of VendorId 0.
+ */
+void SetDeviceVendorId(CipUint vendor_id);
+
+/** @ingroup CIP_API
+ * @brief Get device's CIP VendorId
+ *
+ * @returns the currently used VendorId
+ */
+CipUint GetDeviceVendorId(void);
+
+/** @ingroup CIP_API
+ * @breif Set device's CIP ProductName
+ *
+ * @param product_name C-string to use as ProducName
+ *
+ * When OpENer is used as a library, multiple CIP adapters may use it
+ * and will need to change the product name.
+ */
+void SetDeviceProductName(const char *product_name);
+
+/** @ingroup CIP_API
+ * @brief Get device's current CIP ProductName
+ *
+ * Hint, use GetCstrFromCipShortString() to get a printable/logable C
+ * string, since CipShortString's aren't NUL terminated.
+ *
+ * @returns the CipShortString for the product name
+ */
+CipShortString *GetDeviceProductName(void);
 
 /** @ingroup CIP_API
  * @brief Initialize and setup the CIP-stack
@@ -70,7 +177,7 @@ void SetDeviceStatus(const EipUint16 device_status);
  * @param unique_connection_id value passed to Connection_Manager_Init() to form
  * a "per boot" unique connection ID.
  */
-void CipStackInit(const EipUint16 unique_connection_id);
+EipStatus CipStackInit(const EipUint16 unique_connection_id);
 
 /** @ingroup CIP_API
  * @brief Shutdown of the CIP stack
@@ -86,13 +193,37 @@ void CipStackInit(const EipUint16 unique_connection_id);
 void ShutdownCipStack(void);
 
 /** @ingroup CIP_API
+ * @brief Enable the Run/Idle header for consumed (O->T) cyclic data
+ * @param onoff if set (default), OpENer expects 4 byte Run/Idle header from scanner
+ */
+void CipRunIdleHeaderSetO2T(bool onoff);
+
+/** @ingroup CIP_API
+ * @brief Get current setting of the O->T Run/Idle header
+ * @return current setting of the O->T Run/Idle header
+ */
+bool CipRunIdleHeaderGetO2T(void);
+
+/** @ingroup CIP_API
+ * @brief Enable the Run/Idle header for produced (T->O) cyclic data
+ * @param onoff if set (not default), OpENer includes a 4 byte Run/Idle header in responses to scanner
+ */
+void CipRunIdleHeaderSetT2O(bool onoff);
+
+/** @ingroup CIP_API
+ * @brief Get current setting of the T->O Run/Idle header
+ * @return current setting of the T->O Run/Idle header
+ */
+bool CipRunIdleHeaderGetT2O(void);
+
+/** @ingroup CIP_API
  * @brief Get a pointer to a CIP object with given class code
  *
- * @param class_id class ID of the object to retrieve
+ * @param class_code class code of the object to retrieve
  * @return pointer to CIP Object
  *          0 if object is not present in the stack
  */
-CipClass *GetCipClass(const EipUint32 class_id);
+CipClass *GetCipClass(const CipUdint class_code);
 
 /** @ingroup CIP_API
  * @brief Get a pointer to an instance
@@ -103,7 +234,7 @@ CipClass *GetCipClass(const EipUint32 class_id);
  *          0 if instance is not in the object
  */
 CipInstance *GetCipInstance(const CipClass *RESTRICT const cip_object,
-                            const EipUint32 instance_number);
+                            const CipInstanceNum instance_number);
 
 /** @ingroup CIP_API
  * @brief Get a pointer to an instance's attribute
@@ -119,13 +250,14 @@ CipAttributeStruct *GetCipAttribute(const CipInstance *const cip_instance,
                                     const EipUint16 attribute_number);
 
 typedef void (*InitializeCipClass)(CipClass *); /**< Initializer function for CIP class initialization */
+
 /** @ingroup CIP_API
  * @brief Allocate memory for new CIP Class and attributes
  *
  *  The new CIP class will be registered at the stack to be able
  *  for receiving explicit messages.
  *
- *  @param class_id class ID of the new class
+ *  @param class_code class code of the new class
  *  @param number_of_class_attributes number of class attributes
  *  @param highest_class_attribute_number Highest attribute number from the set of implemented class attributes
  *  @param number_of_class_services number of class services
@@ -140,24 +272,23 @@ typedef void (*InitializeCipClass)(CipClass *); /**< Initializer function for CI
  *  @return pointer to new class object
  *      0 on error
  */
-
-CipClass *CreateCipClass( const EipUint32 class_id,
-                          const int number_of_class_attributes,
-                          const EipUint32 highest_class_attribute_number,
-                          const int number_of_class_services,
-                          const int number_of_instance_attributes,
-                          const EipUint32 highest_instance_attribute_number,
-                          const int number_of_instance_services,
-                          const int number_of_instances,
-                          char *name,
-                          const EipUint16 revision,
-                          InitializeCipClass initializer );
+CipClass *CreateCipClass(const CipUdint class_code,
+                         const int number_of_class_attributes,
+                         const EipUint32 highest_class_attribute_number,
+                         const int number_of_class_services,
+                         const int number_of_instance_attributes,
+                         const EipUint32 highest_instance_attribute_number,
+                         const int number_of_instance_services,
+                         const CipInstanceNum number_of_instances,
+                         const char *const name,
+                         const EipUint16 revision,
+                         InitializeCipClass initializer);
 
 /** @ingroup CIP_API
  * @brief Add a number of CIP instances to a given CIP class
  *
- * The required number of instances are created in a block, but are attached to
- * the class as a linked list.
+ * The required number of instances are attached to the class as a linked list.
+ *
  * The instances are numbered sequentially -- i.e. the first node in the chain
  * is instance 1, the second is 2, and so on.
  * You can add new instances at any time (you do not have to create all the
@@ -173,7 +304,7 @@ CipClass *CreateCipClass( const EipUint32 class_id,
  */
 CipInstance *AddCipInstances(
   CipClass *RESTRICT const cip_object_to_add_instances,
-  const int number_of_instances);
+  const CipInstanceNum number_of_instances);
 
 /** @ingroup CIP_API
  * @brief Create one instance of a given class with a certain instance number
@@ -185,8 +316,8 @@ CipInstance *AddCipInstances(
  *         already exists the existing is returned an no new instance is created
  *
  */
-CipInstance *AddCIPInstance(CipClass *RESTRICT const cip_class_to_add_instance,
-                            const EipUint32 instance_id);
+CipInstance *AddCipInstance(CipClass *RESTRICT const cip_class_to_add_instance,
+                            const CipInstanceNum instance_id);
 
 /** @ingroup CIP_API
  * @brief Insert an attribute in an instance of a CIP class
@@ -198,17 +329,19 @@ CipInstance *AddCIPInstance(CipClass *RESTRICT const cip_class_to_add_instance,
  *  @param cip_instance Pointer to CIP class instance (Instance 0)
  *  @param attribute_number Number of attribute to be inserted.
  *  @param cip_data_type Type of attribute to be inserted.
+ *  @param encode_function Function pointer to the encoding function
+ *  @param decode_function Function pointer to the decoding function
  *  @param cip_data Pointer to data of attribute.
  *  @param cip_flags Flags to indicate set-ability and get-ability of attribute.
  */
-
-
-
-void InsertAttribute(CipInstance *const cip_instance,
+void InsertAttribute(CipInstance *const instance,
                      const EipUint16 attribute_number,
-                     const EipUint8 cip_data_type,
-                     void *const cip_data,
+                     const EipUint8 cip_type,
+                     CipAttributeEncodeInMessage encode_function,
+                     CipAttributeDecodeFromMessage decode_function,
+                     void *const data,
                      const EipByte cip_flags);
+
 /** @ingroup CIP_API
  * @brief Allocates Attribute bitmasks
  *
@@ -232,17 +365,37 @@ size_t CalculateIndex(EipUint16 attribute_number);
  *  the service array is not expandable if you insert a service that has
  *  already been defined, the previous service will be replaced
  *
- * @param cip_class_to_add_service pointer to CIP object. (may be also
+ * @param cip_class pointer to CIP object. (may be also
  * instance# 0)
  * @param service_code service code of service to be inserted.
  * @param service_function pointer to function which represents the service.
  * @param service_name name of the service
  */
-void InsertService(const CipClass *const cip_class_to_add_service,
+void InsertService(const CipClass *const cip_class,
                    const EipUint8 service_code,
                    const CipServiceFunction service_function,
                    char *const service_name);
 
+/** @ingroup CIP_API
+ * @brief Insert a Get or Set callback for a CIP class
+ *
+ * @param cip_class pointer to the target CIP object
+ * @param callback_function the callback function to insert
+ * @param callbacks_to_install  flags to select the affected callbacks
+ *
+ * This function inserts the provided @p callback_function into selected
+ *  callback function entries of the CIP class @p cip_class.
+ * The callback targets are selected by @p callbacks_to_install that may
+ *  be an ORed mask of kPreGetFunc, kPostGetFunc, kPreSetFunc, kPostSetFunc
+ *  and kNvDataFunc.
+ * If either the kPostSetFunc or kNvDataFunc is set the same function
+ *  pointer CipClass::PostSetCallback will be called.
+ */
+void InsertGetSetCallback(CipClass *const cip_class,
+                          CipGetSetCallback callback_function,
+                          CIPAttributeFlag callbacks_to_install);
+
+//TODO: Update documentation
 /** @ingroup CIP_API
  * @brief Produce the data according to CIP encoding onto the message buffer.
  *
@@ -250,29 +403,165 @@ void InsertService(const CipClass *const cip_class_to_add_service,
  * requester (e.g., getAttributeSingle for special structs).
  *  @param cip_data_type the cip type to encode
  *  @param cip_data pointer to data value.
- *  @param cip_message pointer to memory where response should be written
- *  @return length of attribute in bytes
- *          -1 .. error
+ *  @param message_router_response The message router response construct
  */
-int EncodeData(const EipUint8 cip_data_type,
-               const void *const cip_data,
-               EipUint8 **cip_message);
+
+void EncodeCipBool(const void *const data,
+                   ENIPMessage *const outgoing_message);
+
+void EncodeCipByte(const void *const data,
+                   ENIPMessage *const outgoing_message);
+
+void EncodeCipWord(const void *const data,
+                   ENIPMessage *const outgoing_message);
+
+void EncodeCipDword(const void *const data,
+                    ENIPMessage *const outgoing_message);
+
+void EncodeCipLword(const void *const data,
+                    ENIPMessage *const outgoing_message);
+
+void EncodeCipUsint(const void *const data,
+                    ENIPMessage *const outgoing_message);
+
+void EncodeCipUint(const void *const data,
+                   ENIPMessage *const outgoing_message);
+
+void EncodeCipUdint(const void *const data,
+                    ENIPMessage *const outgoing_message);
+
+void EncodeCipUlint(const void *const data,
+                    ENIPMessage *const outgoing_message);
+
+void EncodeCipSint(const void *const data,
+                   ENIPMessage *const outgoing_message);
+
+void EncodeCipInt(const void *const data,
+                  ENIPMessage *const outgoing_message);
+
+void EncodeCipDint(const void *const data,
+                   ENIPMessage *const outgoing_message);
+
+void EncodeCipLint(const void *const data,
+                   ENIPMessage *const outgoing_message);
+
+void EncodeCipReal(const void *const data,
+                   ENIPMessage *const outgoing_message);
+
+void EncodeCipLreal(const void *const data,
+                    ENIPMessage *const outgoing_message);
+
+void EncodeCipShortString(const void *const data,
+                          ENIPMessage *const outgoing_message);
+
+void EncodeCipString(const void *const data,
+                     ENIPMessage *const outgoing_message);
+
+void EncodeCipString2(const void *const data,
+                      ENIPMessage *const outgoing_message);
+
+void EncodeCipStringN(const void *const data,
+                      ENIPMessage *const outgoing_message);
+
+void EncodeCipStringI(const void *const data,
+                      ENIPMessage *const outgoing_message);
+
+void EncodeCipByteArray(const void *const data,
+                        ENIPMessage *const outgoing_message);
+
+void EncodeCipEPath(const void *const data,
+                    ENIPMessage *const outgoing_message); //path_size UINT
+
+void EncodeEPath(const void *const data,
+                 ENIPMessage *const outgoing_message); //path_size not encoded
+
+void EncodeCipEthernetLinkPhyisicalAddress(const void *const data,
+                                           ENIPMessage *const outgoing_message);
+
 
 /** @ingroup CIP_API
  * @brief Retrieve the given data according to CIP encoding from the message
  * buffer.
  *
- * This function may be used in in own services for handling data from the
+ * This function may be used in own services for handling data from the
  * requester (e.g., setAttributeSingle).
- *  @param cip_data_type the CIP type to decode
- *  @param cip_data pointer to data value to written.
- *  @param cip_message pointer to memory where the data should be taken from
+ *  @param data pointer to value to be written.
+ *  @param message_router_request pointer to the request where the data should be taken from
+ *  @param message_router_response pointer to the response where status should be set
  *  @return length of taken bytes
  *          -1 .. error
  */
-int DecodeData(const EipUint8 cip_data_type,
-               void *const cip_data,
-               const EipUint8 **const cip_message);
+int DecodeCipBool(CipBool *const data,
+                  CipMessageRouterRequest *const message_router_request,
+                  CipMessageRouterResponse *const message_router_response);
+
+int DecodeCipByte(CipByte *const data,
+                  CipMessageRouterRequest *const message_router_request,
+                  CipMessageRouterResponse *const message_router_response);
+
+int DecodeCipByteArray(CipByteArray *const data,
+                       const CipMessageRouterRequest *const message_router_request,
+                       CipMessageRouterResponse *const message_router_response);
+
+int DecodeCipWord(CipWord *const data,
+                  CipMessageRouterRequest *const message_router_request,
+                  CipMessageRouterResponse *const message_router_response);
+
+int DecodeCipDword(CipDword *const data,
+                   CipMessageRouterRequest *const message_router_request,
+                   CipMessageRouterResponse *const message_router_response);
+
+int DecodeCipLword(CipLword *const data,
+                   CipMessageRouterRequest *const message_router_request,
+                   CipMessageRouterResponse *const message_router_response);
+
+int DecodeCipUsint(CipUsint *const data,
+                   CipMessageRouterRequest *const message_router_request,
+                   CipMessageRouterResponse *const message_router_response);
+
+int DecodeCipUint(CipUint *const data,
+                  CipMessageRouterRequest *const message_router_request,
+                  CipMessageRouterResponse *const message_router_response);
+
+int DecodeCipUdint(CipUdint *const data,
+                   CipMessageRouterRequest *const message_router_request,
+                   CipMessageRouterResponse *const message_router_response);
+
+int DecodeCipUlint(CipUlint *const data,
+                   CipMessageRouterRequest *const message_router_request,
+                   CipMessageRouterResponse *const message_router_response);
+
+int DecodeCipSint(CipSint *const data,
+                  CipMessageRouterRequest *const message_router_request,
+                  CipMessageRouterResponse *const message_router_response);
+
+int DecodeCipInt(CipInt *const data,
+                 CipMessageRouterRequest *const message_router_request,
+                 CipMessageRouterResponse *const message_router_response);
+
+int DecodeCipDint(CipDint *const data,
+                  CipMessageRouterRequest *const message_router_request,
+                  CipMessageRouterResponse *const message_router_response);
+
+int DecodeCipLint(CipLint *const data,
+                  CipMessageRouterRequest *const message_router_request,
+                  CipMessageRouterResponse *const message_router_response);
+
+int DecodeCipReal(CipReal *const data,
+                  CipMessageRouterRequest *const message_router_request,
+                  CipMessageRouterResponse *const message_router_response);
+
+int DecodeCipLreal(CipLreal *const data,
+                   CipMessageRouterRequest *const message_router_request,
+                   CipMessageRouterResponse *const message_router_response);
+
+int DecodeCipString(CipString *const data,
+                    CipMessageRouterRequest *const message_router_request,
+                    CipMessageRouterResponse *const message_router_response);
+
+int DecodeCipShortString(CipShortString *const data,
+                         CipMessageRouterRequest *const message_router_request,
+                         CipMessageRouterResponse *const message_router_response);
 
 /** @ingroup CIP_API
  * @brief Create an instance of an assembly object
@@ -291,7 +580,7 @@ int DecodeData(const EipUint8 cip_data_type,
  * The notification on received configuration data is handled with the
  * AfterAssemblyDataReceived.
  */
-CipInstance *CreateAssemblyObject(const EipUint32 instance_number,
+CipInstance *CreateAssemblyObject(const CipInstanceNum instance_number,
                                   EipByte *const data,
                                   const EipUint16 data_length);
 
@@ -306,7 +595,7 @@ typedef struct cip_connection_object CipConnectionObject;
  *
  * @return CIP error code
  */
-typedef EipStatus (*OpenConnectionFunction)(
+typedef CipError (*OpenConnectionFunction)(
   CipConnectionObject *RESTRICT const connection_object,
   EipUint16 *const extended_error_code);
 
@@ -316,7 +605,8 @@ typedef EipStatus (*OpenConnectionFunction)(
  * @param connection_object The connection object which is closing the
  * connection
  */
-typedef void (*ConnectionCloseFunction)(CipConnectionObject *connection_object);
+typedef void (*ConnectionCloseFunction)(CipConnectionObject *RESTRICT
+                                        connection_object);
 
 /** @ingroup CIP_API
  * @brief Function prototype for handling the timeout of connections
@@ -345,23 +635,30 @@ typedef EipStatus (*ConnectionSendDataFunction)(CipConnectionObject *
  *
  * @return Stack status
  */
-typedef EipStatus (*ConnectionReceiveDataFunction)(
-  CipConnectionObject *connection_object,
-  const EipUint8 *data,
-  const EipUint16 data_length);
+typedef EipStatus (*ConnectionReceiveDataFunction)(CipConnectionObject *
+                                                   connection_object,
+                                                   const EipUint8 *data,
+                                                   const EipUint16 data_length);
+
+/** @ingroup CIP_API
+ * @brief Function pointer for timeout checker functions
+ *
+ * @param elapsed_time elapsed time since last check
+ */
+typedef void (*TimeoutCheckerFunction)(const MilliSeconds elapsed_time);
 
 /** @ingroup CIP_API
  * @brief register open functions for an specific object.
  *
  * With this function any object can be enabled to be a target for forward
  * open/close request.
- * @param class_id The class ID
+ * @param class_code The class code
  * @param open_connection_function Pointer to the function handling the open
  * process
  * @return EIP_OK on success
  */
 EipStatus
-AddConnectableObject(const EipUint32 class_id,
+AddConnectableObject(const CipUdint class_code,
                      OpenConnectionFunction open_connection_function);
 
 /** @ingroup CIP_API
@@ -396,11 +693,10 @@ void ConfigureExclusiveOwnerConnectionPoint(
  * @param configuration_assembly_id ID of the configuration point to be used for
  * this connection
  */
-void ConfigureInputOnlyConnectionPoint(
-  const unsigned int connection_number,
-  const unsigned int output_assembly_id,
-  const unsigned int input_assembly_id,
-  const unsigned int configuration_assembly_id);
+void ConfigureInputOnlyConnectionPoint(const unsigned int connection_number,
+                                       const unsigned int output_assembly_id,
+                                       const unsigned int input_assembly_id,
+                                       const unsigned int configuration_assembly_id);
 
 /** \ingroup CIP_API
  * \brief Configures the connection point for a listen only connection.
@@ -415,11 +711,10 @@ void ConfigureInputOnlyConnectionPoint(
  * @param configuration_assembly_id ID of the configuration point to be used for
  * this connection
  */
-void ConfigureListenOnlyConnectionPoint(
-  const unsigned int connection_number,
-  const unsigned int output_assembly_id,
-  const unsigned int input_assembly_id,
-  const unsigned int configuration_assembly_id);
+void ConfigureListenOnlyConnectionPoint(const unsigned int connection_number,
+                                        const unsigned int output_assembly_id,
+                                        const unsigned int input_assembly_id,
+                                        const unsigned int configuration_assembly_id);
 
 /** @ingroup CIP_API
  * @brief Notify the encapsulation layer that an explicit message has been
@@ -433,14 +728,14 @@ void ConfigureListenOnlyConnectionPoint(
  * over after we're done here
  * @param originator_address Address struct of the message originator
  * @param outgoing_message The outgoing ENIP message
- * @return length of reply that need to be sent back
+ * @return kEipStatusOkSend: a response needs to be sent, others: EIP stack status
  */
-int HandleReceivedExplictTcpData(int socket_handle,
-                                 EipUint8 *buffer,
-                                 size_t length,
-                                 int *number_of_remaining_bytes,
-                                 struct sockaddr *originator_address,
-                                 ENIPMessage *const outgoing_message);
+EipStatus HandleReceivedExplictTcpData(int socket_handle,
+                                       EipUint8 *buffer,
+                                       size_t length,
+                                       int *number_of_remaining_bytes,
+                                       struct sockaddr *originator_address,
+                                       ENIPMessage *const outgoing_message);
 
 /** @ingroup CIP_API
  * @brief Notify the encapsulation layer that an explicit message has been
@@ -453,17 +748,17 @@ int HandleReceivedExplictTcpData(int socket_handle,
  * @param buffer_length length of the data in buffer.
  * @param number_of_remaining_bytes return how many bytes of the input are left
  * over after we're done here
- * @param unicast Was the data receieved from a multicast address
+ * @param unicast Was the data received as unicast message?
  * @param outgoing_message Outgoing ENIP message
- * @return length of reply that need to be sent back
+ * @return kEipStatusOkSend: a response needs to be sent, others: EIP stack status
  */
-int HandleReceivedExplictUdpData(const int socket_handle,
-                                 const struct sockaddr_in *from_address,
-                                 const EipUint8 *buffer,
-                                 const size_t buffer_length,
-                                 int *number_of_remaining_bytes,
-                                 bool unicast,
-                                 ENIPMessage *const outgoing_message);
+EipStatus HandleReceivedExplictUdpData(const int socket_handle,
+                                       const struct sockaddr_in *from_address,
+                                       const EipUint8 *buffer,
+                                       const size_t buffer_length,
+                                       int *number_of_remaining_bytes,
+                                       bool unicast,
+                                       ENIPMessage *const outgoing_message);
 
 /** @ingroup CIP_API
  *  @brief Notify the connection manager that data for a connection has been
@@ -477,10 +772,9 @@ int HandleReceivedExplictUdpData(const int socket_handle,
  *           connection hijacking
  *  @return EIP_OK on success
  */
-EipStatus
-HandleReceivedConnectedData(const EipUint8 *const received_data,
-                            int received_data_length,
-                            struct sockaddr_in *from_address);
+EipStatus HandleReceivedConnectedData(const EipUint8 *const received_data,
+                                      int received_data_length,
+                                      struct sockaddr_in *from_address);
 
 /** @ingroup CIP_API
  * @brief Check if any of the connection timers (TransmissionTrigger or
@@ -495,8 +789,7 @@ HandleReceivedConnectedData(const EipUint8 *const received_data,
  *
  * @return EIP_OK on success
  */
-EipStatus
-ManageConnections(MilliSeconds elapsed_time);
+EipStatus ManageConnections(MilliSeconds elapsed_time);
 
 /** @ingroup CIP_API
  * @brief Trigger the production of an application triggered connection.
@@ -517,9 +810,8 @@ ManageConnections(MilliSeconds elapsed_time);
  * connection
  * @return EIP_OK on success
  */
-EipStatus
-TriggerConnections(unsigned int output_assembly_id,
-                   unsigned int input_assembly_id);
+EipStatus TriggerConnections(unsigned int output_assembly_id,
+                             unsigned int input_assembly_id);
 
 /** @ingroup CIP_API
  * @brief Inform the encapsulation layer that the remote host has closed the
@@ -551,8 +843,7 @@ void CloseSession(int socket_handle);
  *  return status EIP_ERROR .. error
  *                EIP_OK ... successful finish
  */
-EipStatus
-ApplicationInitialization(void);
+EipStatus ApplicationInitialization(void);
 
 /** @ingroup CIP_CALLBACK_API
  * @brief Allow the device specific application to perform its execution
@@ -593,8 +884,7 @@ void CheckIoConnectionEvent(unsigned int output_assembly_id,
  * The length of the data is already checked within the stack. Therefore the
  * user only has to check if the data is valid.
  */
-EipStatus
-AfterAssemblyDataReceived(CipInstance *instance);
+EipStatus AfterAssemblyDataReceived(CipInstance *instance);
 
 /** @ingroup CIP_CALLBACK_API
  * @brief Inform the application that the data of an assembly
@@ -608,8 +898,7 @@ AfterAssemblyDataReceived(CipInstance *instance);
  *          - true assembly data has changed
  *          - false assembly data has not changed
  */
-EipBool8
-BeforeAssemblyDataSend(CipInstance *instance);
+EipBool8 BeforeAssemblyDataSend(CipInstance *instance);
 
 /** @ingroup CIP_CALLBACK_API
  * @brief Emulate as close a possible a power cycle of the device
@@ -617,8 +906,7 @@ BeforeAssemblyDataSend(CipInstance *instance);
  * @return if the service is supported the function will not return.
  *     EIP_ERROR if this service is not supported
  */
-EipStatus
-ResetDevice(void);
+EipStatus ResetDevice(void);
 
 /** @ingroup CIP_CALLBACK_API
  * @brief Reset the device to the initial configuration and emulate as close as
@@ -627,8 +915,7 @@ ResetDevice(void);
  * @return if the service is supported the function will not return.
  *     EIP_ERROR if this service is not supported
  */
-EipStatus
-ResetDeviceToInitialConfiguration(void);
+EipStatus ResetDeviceToInitialConfiguration(void);
 
 /** @ingroup CIP_CALLBACK_API
  * @brief Allocate memory for the CIP stack
@@ -662,40 +949,20 @@ void CipFree(void *data);
 void RunIdleChanged(EipUint32 run_idle_value);
 
 /** @ingroup CIP_CALLBACK_API
- * @brief create a producing or consuming UDP socket
- *
- * @param communication_direction kUdpCommunicationDirectionProducing or kUdpCommunicationDirectionConsuming
- * @param socket_data pointer to the address holding structure
- *     Attention: For producing point-to-point connection the
- *     *pa_pstAddr->sin_addr.s_addr member is set to 0 by OpENer. The network
- *     layer of the application has to set the correct address of the
- *     originator.
- *     Attention: For consuming connection the network layer has to set the
- * pa_pstAddr->sin_addr.s_addr to the correct address of the originator.
- * FIXME add an additional parameter that can be used by the CIP stack to
- * request the originators sockaddr_in data.
- * @param qos_for_socket CIP QoS object parameter value
- * @return socket identifier on success
- *         -1 on error
+ * @brief Create the UDP socket for the implicit IO messaging,
+ * one socket handles all connections
+ * @return the socket handle if successful, else kEipInvalidSocket
  */
-int CreateUdpSocket(UdpCommuncationDirection communication_direction,
-                    struct sockaddr_in *socket_data,
-                    CipUsint qos_for_socket);
+int CreateUdpSocket(void);
 
 /** @ingroup CIP_CALLBACK_API
- * @brief Create a producing or consuming UDP socket
- *
- * @param socket_data Pointer to the "send to" address
- * @param socket_handle Socket descriptor to send on
- * @param data Pointer to the data to send
- * @param data_length Length of the data to send
+ * @brief Sends the data for the implicit IO messaging via UDP socket
+ * @param socket_data Address message to be sent
+ * @param outgoing message The constructed outgoing message
  * @return kEipStatusOk on success
  */
-EipStatus
-SendUdpData(struct sockaddr_in *socket_data,
-            int socket_handle,
-            EipUint8 *data,
-            EipUint16 data_length);
+EipStatus SendUdpData(const struct sockaddr_in *const socket_data,
+                      const ENIPMessage *const outgoing_message);
 
 /** @ingroup CIP_CALLBACK_API
  * @brief Close the given socket and clean up the stack
@@ -703,6 +970,13 @@ SendUdpData(struct sockaddr_in *socket_data,
  * @param socket_handle socket descriptor to close
  */
 void CloseSocket(const int socket_handle);
+
+/** @ingroup CIP_CALLBACK_API
+ * @brief Register function pointer in timeout_checker_array
+ *
+ * @param timeout_checker_function pointer to object specific timeout checker function
+ */
+void RegisterTimeoutChecker(TimeoutCheckerFunction timeout_checker_function);
 
 /** @mainpage OpENer - Open Source EtherNet/IP(TM) Communication Stack
  * Documentation
@@ -861,19 +1135,30 @@ void CloseSocket(const int socket_handle);
  * specific services and attributes. Therefore OpENer can be easily adapted to
  * support different device profiles and specific CIP objects needed for your
  * device. The functions to be used are:
- *   - S_CIP_Class *CreateCIPClass(EIP_UINT32 class_id, int
- * number_of_class_attributes, EIP_UINT32 class_get_attribute_all_mask, int
- * number_of_class_services, int number_of_instance_attributes, EIP_UINT32
- * instance_get_attribute_all_mask, int number_of_instance_services, int
- * number_of_instances, char *class_name, EIP_UINT16 revision);
- *   - S_CIP_Instance *AddCIPInstances(S_CIP_Class *cip_object, int
- * number_of_instances);
- *   - S_CIP_Instance *AddCIPInstance(S_CIP_Class * cip_class, EIP_UINT32
- * instance_id);
- *   - void InsertAttribute(S_CIP_Instance *instance, EIP_UINT16
- * attribute_number, EIP_UINT8 cip_type, void* data);
- *   - void InsertService(S_CIP_Class *class, EIP_UINT8 service_number,
- * CipServiceFunction service_function, char *service_name);
+ *   - CipClass *CreateCipClass( const CipUdint class_code,
+   const int number_of_class_attributes,
+   const EipUint32 highest_class_attribute_number,
+   const int number_of_class_services,
+   const int number_of_instance_attributes,
+   const EipUint32 highest_instance_attribute_number,
+   const int number_of_instance_services,
+   const int number_of_instances,
+   char *name,
+   const EipUint16 revision,
+   InitializeCipClass initializer );
+ *   - CipInstance *AddCipInstances(CipClass *RESTRICT const cip_class,
+   const int number_of_instances)
+ *   - CipInstance *AddCipInstance(CipClass *RESTRICT const class,
+   const EipUint32 instance_id)
+ *   - void InsertAttribute(CipInstance *const cip_instance,
+   const EipUint16 attribute_number,
+   const EipUint8 cip_data_type,
+   void *const cip_data,
+   const EipByte cip_flags);
+ *   - void InsertService(const CipClass *const cip_class_to_add_service,
+   const EipUint8 service_code,
+   const CipServiceFunction service_function,
+   char *const service_name);
  *
  * @page license OpENer Open Source License
  * The OpENer Open Source License is an adapted BSD style license. The

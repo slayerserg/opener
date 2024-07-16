@@ -1,12 +1,8 @@
-[![Build Status](https://travis-ci.org/EIPStackGroup/OpENer.svg?branch=master)](https://travis-ci.org/EIPStackGroup/OpENer)<a href="https://scan.coverity.com/projects/opener">
-  <img alt="Coverity Scan Build Status"
-       src="https://scan.coverity.com/projects/14200/badge.svg?flat=1"/>
-</a> 
-[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=OpENer&metric=alert_status)](https://sonarcloud.io/dashboard?id=OpENer)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=EIPStackGroup_OpENer&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=EIPStackGroup_OpENer)
 [![Join the chat at https://gitter.im/EIPStackGroupOpENer/Lobby](https://badges.gitter.im/EIPStackGroupOpENer/Lobby.svg)](https://gitter.im/EIPStackGroupOpENer/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 
-OpENer Version 2.1.0
+OpENer Version 2.3.0
 ====================
 
 Welcome to OpENer!
@@ -35,7 +31,8 @@ installed. You will need to have the following installed:
 * CMake
 * gcc
 * make
-* binutils 
+* binutils
+* the development library of libcap (libcap-dev or equivalient)
  
 for normal building. These should be installed on most Linux installations and
 are part of the development packages of Cygwin.
@@ -52,16 +49,19 @@ Compile for Linux/POSIX:
 2. Change to the <OpENer main folder>/bin/posix
 3. For a standard configuration invoke ``setup_posix.sh``
 	1. Invoke the ``make`` command
-	2. Grant OpENer the right to use raw sockets via ``sudo setcap cap_net_raw+ep ./src/ports/POSIX/OpENer``
-	3. Invoking OpENer:
+	2. Invoking OpENer:
 
 		``./src/ports/POSIX/OpENer <interface_name>``
 
 		e.g. ``./src/ports/POSIX/OpENer eth1``
 
 OpENer also now has a real-time capable POSIX startup via the OpENer_RT option, which requires that the used kernel has the full preemptive RT patches applied and activated.
-If you want to use OpENer_RT, instead of step 2, the  ``sudo setcap cap_net_raw,cap_ipc_lock,cap_sys_nice+ep ./src/ports/POSIX/OpENer
-`` has to be run to grant OpENEr ``CAP_SYS_NICE``, ``CAP_IPC_LOCK``, and the ``CAP_NET_RAW`` capabilities, needed for the RT mode
+If you want to use OpENer_RT, prior to step 2, execute ``sudo setcap cap_ipc_lock,cap_sys_nice+ep ./src/ports/POSIX/OpENer
+`` to grant OpENEr ``CAP_SYS_NICE``, and the ``CAP_IPC_LOCK`` capabilities, which are needed for the RT mode
+
+OpENer can also be built and installed as a library by setting the CMake flag `-DOPENER_INSTALL_AS_LIB`.  To build a shared library,
+the global option `-DBUILD_SHARED_LIBS=ON` should also be set.  It has only been tested under Linux/POSIX platform.
+
 
 Compile for Windows XP/7/8 via Visual Studio:
 ---------------------------------------------
@@ -82,8 +82,6 @@ In order to get the correct interface index enter the command ``route print`` in
 Compile for Windows XP/7/8/10 via Cygwin:
 --------------------------------------
 The POSIX setup file can be reused for Cygwin. Please note, that you cannot use RT mode and you will have to remove the code responsible for checking and getting the needed capabilities, as libcap is not available in Cygwin. The easier and more supported way to build OpENer for Windows is to either use MinGW or Visual Studio.
-
-In order to run OpENer, it has to be run as privileged process, as it needs the rights to use raw sockets.
 
 Compile for MinGW on Windows XP/7/8/10
 -------------------------------
@@ -122,6 +120,88 @@ packages contain the generated documentation in the directory doc/api_doc. If yo
 use the GIT version you will need the program Doxygen for generating the HTML 
 documentation. You can generate the documentation by invoking doxygen from the 
 command line in the opener main directory.
+
+
+Fuzzing
+--------------
+### Intro
+Fuzzing is an automated testing method that directs varying input data to a program in 
+order to monitor output. It is a way to test for overall reliability as well as identify 
+potential security bugs.
+
+The fuzzer we are using is AFL, a fuzzer that uses runtime guided techniques to create input for the tested program. From a high-level prespective AFL works as follows:
+- Forks the fuzzed process
+- Genereates a new test case based on a predefined input
+- Feeds the fuzzed process with the test case through STDIN
+- Monitors the execution and registers which paths are reachable
+
+![Alt text](fuzz/imgs/fuzz.png "AFL Fuzzing")
+
+### Compile
+To start fuzzing this project with AFL you'll need to compile it with AFL.
+First make sure you have AFL installed:
+```
+sudo apt install build-essential
+wget http://lcamtuf.coredump.cx/afl/releases/afl-latest.tgz
+tar xzf afl-latest.tgz
+cd afl*
+make && sudo make install
+echo "AFL is ready at: $(which afl-fuzz)"
+
+```
+
+Then, compile OpENer with AFL:
+1. Change to the ``OpENer/bin/posix`` directory
+2. Compile OpENer with AFL ``./setup_posix_fuzz_afl.sh`` 
+3. Run ``make``
+
+### Fuzz
+Finally, generate some test cases and start AFL:
+```
+# Generate inputs
+mkdir inputs
+echo 630000000000000000000000000000000000000000000000 | xxd -r -p > ./inputs/enip_req_list_identity
+# You can also use the inputs we prepared from OpENer/fuzz/inputs
+# Finally, let's fuzz!
+afl-fuzz -i inputs -o findings ./src/ports/POSIX/OpENer <interface_name>
+```
+
+### Reproduce a crash
+Usually to reproduce a crash it's enough to retransmit the testcase using ``cat testcase | nc IP_ADDR 44818``
+However, since CIP runs over the EtherNet/IP layer, it must first register a valid session. Therefore, we need to use a dedicated script:
+`python fuzz/scripts/send_testcase.py IP testcase_path`
+
+Running an OpENer "swarm":
+--------------------------
+
+1. Create a macvlan network for this purpose and tie it to the desired eth port.
+Specify the IP range and use aux address to exclude the addresses used by other devices in the subnet such as the IP of the EIP scanner PC, network bridge, etc.:
+docker network create -d macvlan --subnet=192.168.135.253/24 --ip-range=192.168.135.100/24 --aux-address="PC1=192.168.135.250" --aux-address="VM=192.168.135.252" --aux-address="BR=192.168.135.253" -o parent=eth2 mac_vlan_network
+
+Check the network you created with: docker network inspect mac_vlan_network
+
+The network will assign IP's to the docker containers and an external scanner will be able to communicate with them. To access the containers from inside the docker host, you will have to create a bridge.
+
+2. Create a Dockerfile.
+This uses Ubuntu as the base image. It will copy OpENer to the image root and install the required packages. Lastly run OpENer on eth0 of the image:
+#Filename: Dockerfile
+FROM ubuntu:20.04
+ADD ./bin/posix/src/ports/POSIX/OpENer /
+RUN apt-get update && apt-get install -y --no-install-recommends libcap-dev nmap
+ENTRYPOINT ["./OpENer", "eth0"]
+
+3. Create a docker-compose.yml that will let you connect the macvlan network to the containers and easily build them and tear them down:
+version: "3.3"
+services:
+dockerimagename:
+network_mode: mac_vlan_network
+image: dockeruser/dockerimagename
+
+Note that to login to a running container, you have to expose a port in the dockerfile and dockercompose files and set up a network bridge.
+
+Docker commands to start and stop multiple instances of the OpENer containers:
+Start up 128 docker image instances: docker-compose up --scale dockerimagename=128 -d
+Shut down all the instances: docker-compose down
 
 Porting OpENer:
 ---------------

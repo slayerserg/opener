@@ -175,7 +175,7 @@ TEST(DoublyLinkedList, InsertAfterNode) {
   DoublyLinkedListInsertAtHead(&list, &test_data_1);
   DoublyLinkedListInsertAtHead(&list, &test_data_2);
   DoublyLinkedListInsertAfterNode(&list, list.first, &test_data_3);
-  CHECK_EQUAL( 8, *( (int *)list.first->next->data ) )
+  CHECK_EQUAL( 8, *( (int *)list.first->next->data ) );
   DoublyLinkedListDestroy(&list);
 }
 
@@ -188,7 +188,7 @@ TEST(DoublyLinkedList, InsertAfterLastNode) {
   DoublyLinkedListInsertAtHead(&list, &test_data_1);
   DoublyLinkedListInsertAtHead(&list, &test_data_2);
   DoublyLinkedListInsertAfterNode(&list, list.last, &test_data_3);
-  CHECK_EQUAL( 8, *( (int *)list.last->data ) )
+  CHECK_EQUAL( 8, *( (int *)list.last->data ) );
   DoublyLinkedListDestroy(&list);
 }
 
@@ -201,7 +201,7 @@ TEST(DoublyLinkedList, InsertBeforeNode) {
   DoublyLinkedListInsertAtHead(&list, &test_data_1);
   DoublyLinkedListInsertAtHead(&list, &test_data_2);
   DoublyLinkedListInsertBeforeNode(&list, list.last, &test_data_3);
-  CHECK_EQUAL( 8, *( (int *)list.last->previous->data ) )
+  CHECK_EQUAL( 8, *( (int *)list.last->previous->data ) );
   DoublyLinkedListDestroy(&list);
 }
 
@@ -214,7 +214,7 @@ TEST(DoublyLinkedList, InsertBeforeFirstNode) {
   DoublyLinkedListInsertAtHead(&list, &test_data_1);
   DoublyLinkedListInsertAtHead(&list, &test_data_2);
   DoublyLinkedListInsertBeforeNode(&list, list.first, &test_data_3);
-  CHECK_EQUAL( 8, *( (int *)list.first->data ) )
+  CHECK_EQUAL( 8, *( (int *)list.first->data ) );
   DoublyLinkedListDestroy(&list);
 }
 
@@ -230,7 +230,7 @@ TEST(DoublyLinkedList, RemoveFirstElementInList) {
   DoublyLinkedListNode *node_to_be_deleted = list.first;
   DoublyLinkedListRemoveNode(&list, &node_to_be_deleted);
   CHECK_EQUAL(2, test_data_1);
-  CHECK_EQUAL(4, *( (int *)list.first->data ) );
+  CHECK_EQUAL( 4, *( (int *)list.first->data ) );
   DoublyLinkedListDestroy(&list);
 }
 

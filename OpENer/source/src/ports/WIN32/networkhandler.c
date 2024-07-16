@@ -25,7 +25,7 @@ MicroSeconds GetMicroSeconds() {
 }
 
 MilliSeconds GetMilliSeconds(void) {
-  return (MilliSeconds) (getMicroSeconds() / 1000ULL);
+  return (MilliSeconds) (GetMicroSeconds() / 1000ULL);
 }
 
 EipStatus NetworkHandlerInitializePlatform(void) {
@@ -34,6 +34,14 @@ EipStatus NetworkHandlerInitializePlatform(void) {
   WSAStartup(wVersionRequested, &wsaData);
 
   return kEipStatusOk;
+}
+
+void ShutdownSocketPlatform(int socket_handle) {
+  /* Suppress unused parameter compiler warning. */
+  (void)socket_handle;
+
+#pragma \
+  message ("Untested. Is a shutdown() needed under Windows like for the POSIX port?")
 }
 
 void CloseSocketPlatform(int socket_handle) {
@@ -47,5 +55,9 @@ int SetSocketToNonBlocking(int socket_handle) {
 
 int SetQosOnSocket(const int socket,
                    CipUsint qos_value) {
+  /* Suppress unused parameter compiler warning. */
+  (void) socket;
+  (void) qos_value;
+
   return 0; // Dummy implementation, until a working one is viable
 }

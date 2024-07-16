@@ -4,7 +4,7 @@
  *
  ******************************************************************************/
 
-/** @file generic_networkhandler.c
+/** @file generic_networkhandler.h
  *  @author Martin Melik Merkumians
  *  @brief This file includes all platform-independent functions of the network handler to reduce code duplication
  *
@@ -17,7 +17,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#if !defined(STM32)	/** Not STM32 target */
 #include <errno.h>
+#else	/** STM32 target (GCC), lwip has its own error code list */
+#include "lwip/errno.h"
+#endif	/* STM32 target */
 
 #include "opener_api.h"
 #include "typedefs.h"
@@ -27,24 +31,32 @@
 #include "appcontype.h"
 #include "socket_timer.h"
 
-SocketTimer g_timestamps[OPENER_NUMBER_OF_SUPPORTED_SESSIONS];
+/*The port to be used per default for I/O messages on UDP.*/
+extern const uint16_t kOpenerEipIoUdpPort;
+extern const uint16_t kOpenerEthernetPort;
+
+extern SocketTimer g_timestamps[OPENER_NUMBER_OF_SUPPORTED_SESSIONS];
+/** @brief Ethernet/IP standard ports */
+#define kOpenerEthernetPort   44818     /** Port to be used per default for messages on TCP */
+#define kOpenerEipIoUdpPort   2222      /** Port to be used per default for I/O messages on UDP.*/
+
 
 //EipUint8 g_ethernet_communication_buffer[PC_OPENER_ETHERNET_BUFFER_SIZE]; /**< communication buffer */
 
-fd_set master_socket;
-fd_set read_socket;
+extern fd_set master_socket;
+extern fd_set read_socket;
 
-int highest_socket_handle; /**< temporary file descriptor for select() */
+extern int highest_socket_handle; /**< temporary file descriptor for select() */
 
 /** @brief This variable holds the TCP socket the received to last explicit message.
  * It is needed for opening point to point connection to determine the peer's
  * address.
  */
-int g_current_active_tcp_socket;
+extern int g_current_active_tcp_socket;
 
-struct timeval g_time_value;
-MilliSeconds g_actual_time;
-MilliSeconds g_last_time;
+extern struct timeval g_time_value;
+extern MilliSeconds g_actual_time;
+extern MilliSeconds g_last_time;
 /** @brief Struct representing the current network status
  *
  */
@@ -52,10 +64,13 @@ typedef struct {
   int tcp_listener; /**< TCP listener socket */
   int udp_unicast_listener; /**< UDP unicast listener socket */
   int udp_global_broadcast_listener; /**< UDP global network broadcast listener */
+  int udp_io_messaging; /**< UDP IO messaging socket */
+  CipUdint ip_address; /**< IP being valid during NetworkHandlerInitialize() */
+  CipUdint network_mask; /**< network mask being valid during NetworkHandlerInitialize() */
   MilliSeconds elapsed_time;
 } NetworkStatus;
 
-NetworkStatus g_network_status; /**< Global variable holding the current network status */
+extern NetworkStatus g_network_status; /**< Global variable holding the current network status */
 
 /** @brief The platform independent part of network handler initialization routine
  *
@@ -67,14 +82,7 @@ void CloseUdpSocket(int socket_handle);
 
 void CloseTcpSocket(int socket_handle);
 
-
-/** @brief Initializes the network handler, shall be implemented by a port-specific networkhandler
- *
- *  @return EipStatus, if initialization failed EipError is returned
- */
-EipStatus NetworkHandlerInitialize(void);
-
-EipStatus NetworkHandlerProcessOnce(void);
+EipStatus NetworkHandlerProcessCyclic(void);
 
 EipStatus NetworkHandlerFinish(void);
 
@@ -96,5 +104,20 @@ int GetMaxSocket(int socket1,
                  int socket2,
                  int socket3,
                  int socket4);
+
+/** @brief Set the Qos the socket for implicit IO messaging
+ *
+ * @return 0 if successful, else the error code */
+int SetQos(CipUsint qos_for_socket);
+
+/** @brief Set the socket options for Multicast Producer
+ *
+ * @return 0 if successful, else the error code */
+int SetSocketOptionsMulticastProduce(void);
+
+/** @brief Get the peer address
+ *
+ * @return peer address if successful, else any address (0) */
+EipUint32 GetPeerAddress(void);
 
 #endif /* GENERIC_NETWORKHANDLER_H_ */

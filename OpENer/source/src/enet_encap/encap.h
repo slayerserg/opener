@@ -8,6 +8,7 @@
 
 #include "typedefs.h"
 #include "cipconnectionobject.h"
+#include "generic_networkhandler.h"
 
 /** @file encap.h
  * @brief This file contains the public interface of the encapsulation layer
@@ -20,9 +21,6 @@
 /*** defines ***/
 
 #define ENCAPSULATION_HEADER_LENGTH     24
-
-/** @brief Ethernet/IP standard port */
-static const int kOpenerEthernetPort = 0xAF12;
 
 /** @brief definition of status codes in encapsulation protocol
  * All other codes are either legacy codes, or reserved for future use
@@ -41,7 +39,7 @@ typedef enum {
 typedef struct encapsulation_data {
   CipUint command_code;
   CipUint data_length;
-  CipUdint session_handle;
+  CipSessionHandle session_handle;
   CipUdint status;
   CipOctet sender_context[8]; /**< length of 8, according to the specification */
   CipUdint options;
@@ -49,13 +47,13 @@ typedef struct encapsulation_data {
   const EipUint8 *current_communication_buffer_position; /**< The current position in the communication buffer during the decoding process */
 } EncapsulationData;
 
-typedef struct encapsulation_interface_information {
+typedef struct encapsulation_service_information {
   EipUint16 type_code;
   EipUint16 length;
   EipUint16 encapsulation_protocol_version;
   EipUint16 capability_flags;
   EipInt8 name_of_service[16];
-} EncapsulationInterfaceInformation;
+} EncapsulationServiceInformation;
 
 /*** global variables (public) ***/
 
@@ -81,52 +79,37 @@ void EncapsulationShutDown(void);
  */
 void ManageEncapsulationMessages(const MilliSeconds elapsed_time);
 
-size_t GetSessionFromSocket(const int socket_handle);
+CipSessionHandle GetSessionFromSocket(const int socket_handle);
 
 void RemoveSession(const int socket);
 
-void CloseSessionBySessionHandle(
-  const CipConnectionObject *const connection_object);
+void CloseSessionBySessionHandle(const CipConnectionObject *const connection_object);
 
-void CloseEncapsulationSessionBySockAddr(
-  const CipConnectionObject *const connection_object);
+void CloseEncapsulationSessionBySockAddr(const CipConnectionObject *const connection_object);
 
-void CloseClass3ConnectionBasedOnSession(size_t encapsulation_session_handle);
+void CloseClass3ConnectionBasedOnSession(CipSessionHandle encapsulation_session_handle);
 
 /* No reason to use this functions outside the encapsulation layer, they are here for testing */
 typedef struct enip_message ENIPMessage;
 
-void EncapsulateListIdentityResponseMessage(
-  const EncapsulationData *const receive_data,
-  ENIPMessage *const outgoing_message);
+void EncapsulateListIdentityResponseMessage(const EncapsulationData *const receive_data, ENIPMessage *const outgoing_message);
 
-EipInt16 CreateEncapsulationStructure(const EipUint8 *receive_buffer,
-                                      int receive_buffer_length,
-                                      EncapsulationData *const encapsulation_data);
+int_fast32_t CreateEncapsulationStructure(const EipUint8 *receive_buffer,
+                                          size_t receive_buffer_length,
+                                          EncapsulationData *const encapsulation_data);
 
 void SkipEncapsulationHeader(ENIPMessage *const outgoing_message);
 
-void GenerateEncapsulationHeader(const EncapsulationData *const receive_data,
-                                 const size_t command_specific_data_length,
-                                 const size_t session_handle,
-                                 const EncapsulationProtocolErrorCode encapsulation_protocol_status,
-                                 ENIPMessage *const outgoing_message);
+void GenerateEncapsulationHeader(const EncapsulationData *const receive_data, const size_t command_specific_data_length, const CipSessionHandle session_handle,
+    const EncapsulationProtocolErrorCode encapsulation_protocol_status, ENIPMessage *const outgoing_message);
 
-void HandleReceivedListServicesCommand(
-  const EncapsulationData *const receive_data,
-  ENIPMessage *const outgoing_message);
+void HandleReceivedListServicesCommand(const EncapsulationData *const receive_data, ENIPMessage *const outgoing_message);
 
-void HandleReceivedListInterfacesCommand(
-  const EncapsulationData *const receive_data,
-  ENIPMessage *const outgoing_message);
+void HandleReceivedListInterfacesCommand(const EncapsulationData *const receive_data, ENIPMessage *const outgoing_message);
 
-void HandleReceivedRegisterSessionCommand(int socket,
-                                          const EncapsulationData *const receive_data,
-                                          ENIPMessage *const outgoing_message);
+void HandleReceivedRegisterSessionCommand(int socket, const EncapsulationData *const receive_data, ENIPMessage *const outgoing_message);
 
-EipStatus HandleReceivedSendRequestResponseDataCommand(
-  const EncapsulationData *const receive_data,
-  const struct sockaddr *const originator_address,
-  ENIPMessage *const outgoing_message);
+EipStatus HandleReceivedSendRequestResponseDataCommand(const EncapsulationData *const receive_data, const struct sockaddr *const originator_address,
+    ENIPMessage *const outgoing_message);
 
 #endif /* OPENER_ENCAP_H_ */

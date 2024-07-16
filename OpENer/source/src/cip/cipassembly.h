@@ -9,8 +9,19 @@
 #include "typedefs.h"
 #include "ciptypes.h"
 
-/** @brief Assembly Class Code */
-static const int kCipAssemblyClassCode = 0x04;
+/** @brief Assembly class code */
+static const CipUint kCipAssemblyClassCode = 0x04U;
+
+
+/** @brief Assembly object instance attribute IDs.
+ *
+ * Reference:
+ * \cite CipVol1, Table 5-5.4
+ */
+typedef enum {
+  kAssemblyObjectInstanceAttributeIdData = 3
+} AssemblyObjectInstanceAttributeId;
+
 
 /* public functions */
 
@@ -45,6 +56,6 @@ void ShutdownAssemblies(void);
  */
 EipStatus NotifyAssemblyConnectedDataReceived(CipInstance *const instance,
                                               const EipUint8 *const data,
-                                              const EipUint16 data_length);
+                                              const size_t data_length);
 
 #endif /* OPENER_CIPASSEMBLY_H_ */

@@ -43,13 +43,27 @@
 #define LOGICAL_SEGMENT_EXTENDED_TYPE_STRUCTURE_MEMBER_HANDLE 0x06 /**< Message value indicating the Structured Member Handler Extended Logical Segment type */
 
 #define LOGICAL_SEGMENT_SPECIAL_TYPE_FORMAT_ELECTRONIC_KEY 0x00 /**< Message value indicating an electronic key */
+#define ELECTRONIC_KEY_SEGMENT_KEY_FORMAT_4 0x04
 
-#define NETWORK_SEGMENT_SUBTYPE_SCHEDULE 0x01 /**< Message value indicating a network segment schedule message */
-#define NETWORK_SEGMENT_SUBTYPE_FIXED_TAG 0x02 /**< Message value indicating a network segment fixed tag message */
-#define NETWORK_SEGMENT_SUBTYPE_PRODUCTION_INHIBIT_TIME_IN_MILLISECONDS 0x03 /**< Message value indicating a network segment PIT in milliseconds message */
-#define NETWORK_SEGMENT_SUBTYPE_SAFETY 0x04 /**< Message value indicating a network segment safety message */
-#define NETWORK_SEGMENT_SUBTYPE_PRODUCTION_INHIBIT_TIME_IN_MICROSECONDS 0x10 /**< Message value indicating a network segment PIT in microseconds message */
-#define NETWORK_SEGMENT_SUBTYPE_EXTENDED_NETWORK 0x1F /**< Message indicating a network message extended network message */
+#define NETWORK_SEGMENT_SCHEDULE 0x01 /**< Message value indicating a network segment schedule message */
+#define NETWORK_SEGMENT_FIXED_TAG 0x02 /**< Message value indicating a network segment fixed tag message */
+#define NETWORK_SEGMENT_PRODUCTION_INHIBIT_TIME_IN_MILLISECONDS 0x03 /**< Message value indicating a network segment PIT in milliseconds message */
+#define NETWORK_SEGMENT_SAFETY 0x04 /**< Message value indicating a network segment safety message */
+#define NETWORK_SEGMENT_PRODUCTION_INHIBIT_TIME_IN_MICROSECONDS 0x10 /**< Message value indicating a network segment PIT in microseconds message */
+#define NETWORK_SEGMENT_EXTENDED_NETWORK 0x1F /**< Message indicating a network message extended network message */
+
+#define SYMBOLIC_SEGMENT_FORMAT_EXTENDED_STRING 0x00
+
+#define SYMBOLIC_SEGMENT_EXTENDED_FORMAT_DOUBLE_CHAR 0x20
+#define SYMBOLIC_SEGMENT_EXTENDED_FORMAT_TRIPLE_CHAR 0x40
+#define SYMBOLIC_SEGMENT_EXTENDED_FORMAT_NUMERIC 0xC0
+
+#define SYMBOLIC_SEGMENT_EXTENDED_FORMAT_NUMERIC_USINT_TYPE 0x06
+#define SYMBOLIC_SEGMENT_EXTENDED_FORMAT_NUMERIC_UINT_TYPE 0x07
+#define SYMBOLIC_SEGMENT_EXTENDED_FORMAT_NUMERIC_UDINT_TYPE 0x08
+
+#define DATA_SEGMENT_SUBTYPE_SIMPLE_DATA 0x00
+#define DATA_SEGMENT_SUBTYPE_ANSI_EXTENDED_SYMBOL 0x11
 
 /** @brief Segment type Enum
  *
@@ -65,7 +79,8 @@ typedef enum segment_type {
   kSegmentTypeDataSegment, /**< Data segment */
   kSegmentTypeDataTypeConstructed, /**< Data type constructed */
   kSegmentTypeDataTypeElementary, /**< Data type elementary */
-  kSegmentTypeReserved /**< Reserved segment type */
+  kSegmentTypeReserved, /**< Reserved segment type */
+  kSegmentTypeInvalid /**< Invalid segment type */
 } SegmentType;
 
 /** @brief Port Segment flags */
@@ -82,7 +97,8 @@ typedef enum logical_segment_type {
   kLogicalSegmentLogicalTypeAttributeId, /**< Attribute ID */
   kLogicalSegmentLogicalTypeSpecial, /**< Special */
   kLogicalSegmentLogicalTypeServiceId, /**< Service ID */
-  kLogicalSegmentLogicalTypeExtendedLogical /**< Extended Logical */
+  kLogicalSegmentLogicalTypeExtendedLogical, /**< Extended Logical */
+  kLogicalSegmentLogicalTypeInvalid /**< Invalid segment type */
 } LogicalSegmentLogicalType;
 
 typedef enum logical_segment_extended_logical_type {
@@ -92,7 +108,8 @@ typedef enum logical_segment_extended_logical_type {
   kLogicalSegmentExtendedLogicalTypeBitIndex,
   kLogicalSegmentExtendedLogicalTypeIndirectBitIndex,
   kLogicalSegmentExtendedLogicalTypeStructureMemberNumber,
-  kLogicalSegmentExtendedLogicalTypeStructureMemberHandle
+  kLogicalSegmentExtendedLogicalTypeStructureMemberHandle,
+  kLogicalSegmentExtendedLogicalTypeInvalid
 } LogicalSegmentExtendedLogicalType;
 
 /** @brief Enum containing values how long the encoded value will be (8, 16, or
@@ -100,7 +117,8 @@ typedef enum logical_segment_extended_logical_type {
 typedef enum logical_segment_logical_format {
   kLogicalSegmentLogicalFormatEightBit,
   kLogicalSegmentLogicalFormatSixteenBit,
-  kLogicalSegmentLogicalFormatThirtyTwoBit
+  kLogicalSegmentLogicalFormatThirtyTwoBit,
+  kLogicalSegmentLogicalFormatInvalid
 } LogicalSegmentLogicalFormat;
 
 typedef enum logical_segment_special_type_logical_format {
@@ -161,8 +179,8 @@ typedef enum symbolic_segment_extended_format {
 
 /* Start - Often used types of EPaths */
 typedef struct connection_path_epath {
-  CipDword class_id;
-  CipDword instance_id;
+  CipDword class_id;   /**< here in accordance with Vol. 1 C-1.4.2 */
+  CipInstanceNum instance_id;
   CipDword attribute_id_or_connection_point;
 } CipConnectionPathEpath;
 /* End - Often used types of EPaths */
@@ -257,11 +275,11 @@ LogicalSegmentLogicalFormat GetPathLogicalSegmentLogicalFormat(
 void SetPathLogicalSegmentLogicalFormat(LogicalSegmentLogicalFormat format,
                                         CipOctet *const cip_path);
 
-const CipDword CipEpathGetLogicalValue(const EipUint8 **message);
+CipDword CipEpathGetLogicalValue(const EipUint8 **message);
 
-size_t CipEpathSetLogicalValue(const CipDword logical_value,
-                               const LogicalSegmentLogicalFormat logical_format,
-                               CipOctet **message);
+void CipEpathSetLogicalValue(const CipDword logical_value,
+                             const LogicalSegmentLogicalFormat logical_format,
+                             CipMessageRouterResponse *const message);
 
 /** @brief  Gets the Extended Logical Type of a Logical Segment EPath message
  *
@@ -293,9 +311,8 @@ ElectronicKeySegmentFormat GetPathLogicalSegmentElectronicKeyFormat(
  * @param cip_path The start of the EPath message
  * @param key Writes the data on the user provided data electronic key struct
  */
-void GetElectronicKeyFormat4FromMessage(
-  const CipOctet **const cip_path,
-  ElectronicKeyFormat4 *key);
+void GetElectronicKeyFormat4FromMessage(const CipOctet **const cip_path,
+                                        ElectronicKeyFormat4 *key);
 
 /** @brief Gets the Network Segment Subtype of a EPatch Network Segement EPath message
  *

@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <winsock2.h>
 #include <windows.h>
-#include <Ws2tcpip.h>
+#include <ws2tcpip.h>
 
 #include "networkhandler.h"
 
@@ -37,6 +37,11 @@ EipStatus NetworkHandlerInitializePlatform(void) {
   return kEipStatusOk;
 }
 
+void ShutdownSocketPlatform(int socket_handle) {
+#warning \
+  "Untested. Is a shutdown() needed under Windows like for the POSIX port?"
+}
+
 void CloseSocketPlatform(int socket_handle) {
   closesocket(socket_handle);
 }
@@ -48,6 +53,13 @@ int SetSocketToNonBlocking(int socket_handle) {
 
 int SetQosOnSocket(int socket,
                    CipUsint qos_value) {
-  CipUsint set_tos = qos_value;
-  return setsockopt(socket, IPPROTO_IP, IP_TOS, &set_tos, sizeof(set_tos) );
+  /* Quote from Vol. 2, Section 5-7.4.2 DSCP Value Attributes:
+   *  Note that the DSCP value, if placed directly in the ToS field
+   *  in the IP header, must be shifted left 2 bits. */
+  DWORD set_tos = qos_value << 2;
+  return setsockopt(socket,
+                    IPPROTO_IP,
+                    IP_TOS,
+                    (char *)&set_tos,
+                    sizeof(set_tos) );
 }

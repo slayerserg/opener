@@ -7,7 +7,16 @@
 #######################################
 add_test_includes()
 
+
+#######################################
+# Add common includes                 #
+#######################################
 opener_common_includes()
+
+#######################################
+# Add platform-specific includes      #
+#######################################
+opener_platform_support("INCLUDES")
 
 ###################################################
 # Copy custom test output file to binary location #
@@ -19,7 +28,7 @@ add_subdirectory( ports )
 add_subdirectory( enet_encap )
 add_subdirectory( utils )
 
-add_executable( OpENer_Tests OpENerTests.cpp )
+add_executable( OpENer_Tests OpENerTests.cpp callback_mock.cpp)
 
 find_library ( CPPUTEST_LIBRARY CppUTest ${CPPUTEST_HOME}/cpputest_build/lib )
 find_library ( CPPUTESTEXT_LIBRARY CppUTestExt ${CPPUTEST_HOME}/cpputest_build/lib )
@@ -31,6 +40,7 @@ target_link_libraries( OpENer_Tests UtilsTest Utils )
 target_link_libraries( OpENer_Tests EthernetEncapsulationTest ENET_ENCAP )
 target_link_libraries( OpENer_Tests CipTest CIP )
 target_link_libraries( OpENer_Tests PortsTest PLATFORM_GENERIC )
+target_link_libraries( OpENer_Tests NVDATA )
 
 ########################################
 # Adds test to CTest environment       #

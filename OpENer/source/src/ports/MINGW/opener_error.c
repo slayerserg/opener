@@ -14,18 +14,18 @@
 
  #include "opener_error.h"
 
-int GetSocketErrorNumber() {
+int GetSocketErrorNumber(void) {
   return WSAGetLastError();
 }
 
 char *GetErrorMessage(int error_number) {
   char *error_message = NULL;
-  FormatMessage(
+  FormatMessageA(
     FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
     NULL,
     error_number,
     MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-    &error_message,
+    (LPSTR)&error_message,
     0,
     NULL);
   return error_message;
