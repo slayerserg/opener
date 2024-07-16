@@ -3,117 +3,212 @@
  * All rights reserved.
  *
  ******************************************************************************/
-
+ /*
+ connection 101 100  
+ connection 254 100
+ connection 101 254
+ */
+#define _BSD_SOURCE
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <time.h>
+#include <assert.h>
 
 #include "opener_api.h"
 #include "appcontype.h"
 #include "trace.h"
 #include "cipidentity.h"
+
 #include "ciptcpipinterface.h"
 #include "cipqos.h"
-#include "nvdata.h"
+//#include "nvdata.h"
 #if defined(OPENER_ETHLINK_CNTRS_ENABLE) && 0 != OPENER_ETHLINK_CNTRS_ENABLE
   #include "cipethernetlink.h"
   #include "ethlinkcbs.h"
 #endif
 
-#define DEMO_APP_INPUT_ASSEMBLY_NUM                100 //0x064
-#define DEMO_APP_OUTPUT_ASSEMBLY_NUM               150 //0x096
-#define DEMO_APP_CONFIG_ASSEMBLY_NUM               151 //0x097
-#define DEMO_APP_HEARTBEAT_INPUT_ONLY_ASSEMBLY_NUM  152 //0x098
-#define DEMO_APP_HEARTBEAT_LISTEN_ONLY_ASSEMBLY_NUM 153 //0x099
+#include <unistd.h>
+#include <stdio.h>
+#include <pthread.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+
+#define GFL_ASSEMBLY_OBJECT                        100 //0x064
+#define TCMS_ASSEMBLY_OBJECT                       101 //0x065
+#define HEARTBEAT_ASSEMBLY_OBJECT                  254 //0X0FE
+#define APP_CONFIG_1                                 1 //0x001
 #define DEMO_APP_EXPLICT_ASSEMBLY_NUM              154 //0x09A
 
 /* global variables for demo application (4 assembly data fields)  ************/
 
-EipUint8 g_assembly_data064[32]; /* Input */
-EipUint8 g_assembly_data096[32]; /* Output */
-EipUint8 g_assembly_data097[10]; /* Config */
-EipUint8 g_assembly_data09A[32]; /* Explicit */
+#define UDS_SERVER_ADDRESS "/etc/uds_socket"
+#define GFL_ASSEMBLY_OBJECT_SIZE 1480
+#define TCMS_ASSEMBLY_OBJECT_SIZE 1272
+#define HEARTBEAT_ASSEMBLY_OBJECT_SIZE 32
+#define DIVIDER 8
+#define THREAD_SLEEP_MICROSECONDS 1
+#define HEADER_LENGTH 4
+#define IMALIVE_LENGTH 1
+
+
+pthread_mutex_t uds_lock;
+
+#if defined (GFL_ASSEMBLY_OBJECT) && defined (TCMS_ASSEMBLY_OBJECT)
+EipUint8 data_from_python_application[(GFL_ASSEMBLY_OBJECT_SIZE / DIVIDER) - HEADER_LENGTH] = \
+  {0x43, 0x2c, 0xbb, 0xe7, 0xc0, 0x2c, 0x3b, 0x8e, 0x22, 0x4b, 0x9d, 0x9e, 0xcf, 0x1a, 0xc5, 0x39, \
+   0x7c, 0x9f, 0xde, 0xf8, 0x32, 0xe,  0x9b, 0x7a, 0x9,  0x5d, 0xf5, 0xb3, 0x36, 0xc8, 0xa4, 0x10, \
+   0x3a, 0xd3, 0xe2, 0x89, 0x63, 0xec, 0xec, 0xd9, 0xbb, 0x5,  0x4d, 0x46, 0xb5, 0x97, 0xfe, 0x47, \
+   0xa7, 0xc9, 0x8b, 0x2c, 0x80, 0x97, 0x94, 0x90, 0xbc, 0xeb, 0x1b, 0x7b, 0xdd, 0xb9, 0xef, 0xd2, \
+   0xda, 0x87, 0xe3, 0x56, 0x1f, 0xf5, 0x3,  0x17, 0x82, 0xc9, 0x46, 0x99, 0xb,  0x6d, 0xbb, 0xb7, \
+   0x85, 0x0,  0x15, 0xc8, 0xfb, 0xf6, 0x3a, 0x38, 0x58, 0xe4, 0x9,  0x4c, 0x7f, 0xea, 0x15, 0x78, \
+   0x43, 0x34, 0x44, 0x67, 0x5e, 0xee, 0x4e, 0xab, 0xe4, 0x3e, 0xd4, 0xb4, 0xcc, 0x9b, 0xdb, 0xdf, \
+   0xd8, 0x65, 0x81, 0xcd, 0x18, 0x18, 0x55, 0xa4, 0xb9, 0x5e, 0x22, 0x5,  0x54, 0x7,  0xba, 0xb,  \
+   0x27, 0x1f, 0xdb, 0xf1, 0x5f, 0xab, 0x9b, 0x7f, 0xd6, 0xe8, 0x92, 0xc1, 0xca, 0x27, 0xa4, 0x7f, \
+   0x46, 0x3d, 0x25, 0xdb, 0x4a, 0xd7, 0x57, 0x64, 0xa6, 0x65, 0x1a, 0xcb, 0xa1, 0xe4, 0x80, 0x70, \
+   0x6c, 0xb0, 0x43, 0x98, 0xea, 0xc3, 0x1f, 0xf8, 0x9a, 0xf6, 0x70, 0xa2, 0xc8, 0xb1, 0x67, 0xf1, \
+   0x77, 0x69, 0x5f, 0x7d, 0x20};
+EipUint8 gfl_assembly_object_data[GFL_ASSEMBLY_OBJECT_SIZE / DIVIDER]; /* Gapfiller assembly object */
+EipUint8 tcms_assembly_object_data[TCMS_ASSEMBLY_OBJECT_SIZE / DIVIDER]; /* TCMS/MPU assembly object */
+#endif
+
+EipUint8 g_assembly_data_config_1[10]; /* Demo Config */
+EipUint8 g_assembly_data_explicit[32]; /* Explicit */
+
+bool firstConn = true;
+
+void ResetHeartbeat()
+{
+  //gfl_assembly_object_data[4] = 0;
+}
+
+void UpdateHeartBeat()
+{
+  gfl_assembly_object_data[4] = GetHeartBeat();
+}
+
+void updateBytes()
+{
+  //UpdateHeartBeat();
+}
+
+void trace_timestamp(char *args, int value)
+{
+  time_t timer;
+  char buffer[26];
+  struct tm* tm_info;
+  timer = time(NULL);
+  tm_info = localtime(&timer);
+  strftime(buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
+  OPENER_TRACE_INFO("%s - %s %d\n", buffer, args, value);
+}
+
+int socket_fd()
+{
+    // struct sockaddr_un socket_address;
+
+    // int sfd = socket(AF_UNIX, SOCK_STREAM, 0);
+
+    // if (sfd == -1) {
+    //   puts("Bad socket file");
+    //   exit(0);
+    // }
+
+    // memset(&socket_address, 0, sizeof(struct sockaddr_un));
+    // socket_address.sun_family = AF_UNIX;
+    // strncpy(socket_address.sun_path, UDS_SERVER_ADDRESS, sizeof(socket_address.sun_path) - 1);
+
+    // if (connect(sfd, (struct sockaddr *) &socket_address,
+    //             sizeof(struct sockaddr_un)) == -1) {
+    //   puts("Can not connect with socket");
+    //   exit(0);
+    // }
+    // return sfd;
+
+    return 0;
+}
 
 /* local functions */
 
-/* global functions called by the stack */
+void *uds_thread(void *arg) {
+
+    int sfd = socket_fd();
+
+    #if defined (GFL_ASSEMBLY_OBJECT) && defined (TCMS_ASSEMBLY_OBJECT)
+    while (1) {
+
+        
+        //send(sfd, tcms_assembly_object_data, sizeof(tcms_assembly_object_data), 0);
+        //trace_timestamp("Sending assembly: ", (int)tcms_assembly_object_data[0]);
+        //OPENER_TRACE_INFO("\nValue at 0 gfl: %d | address: %p:", *(gfl_assembly_object_data), (void *)&gfl_assembly_object_data);
+        //OPENER_TRACE_INFO("\nValue at 0 python: %d | address: %p:", *(data_from_python_application), (void *)&data_from_python_application);
+        
+        pthread_mutex_lock(&uds_lock);
+        //memset(data_from_python_application, 0, sizeof(data_from_python_application));
+        //recv(sfd, data_from_python_application, GFL_ASSEMBLY_OBJECT_SIZE, 0);
+        memcpy( &gfl_assembly_object_data[HEADER_LENGTH], &data_from_python_application ,
+              sizeof(data_from_python_application));
+        //UpdateHeartBeat();
+
+        pthread_mutex_unlock(&uds_lock);
+
+        usleep(10000);
+    }
+    #endif
+}
+
+void AppendGFLHeaderToData()
+{
+  gfl_assembly_object_data[0] = 1;
+  gfl_assembly_object_data[1] = 0;
+  gfl_assembly_object_data[2] = 0;
+  gfl_assembly_object_data[3] = 0;
+}
+
 EipStatus ApplicationInitialization(void) {
   /* create 3 assembly object instances*/
-  /*INPUT*/
-  CreateAssemblyObject( DEMO_APP_INPUT_ASSEMBLY_NUM, g_assembly_data064,
-                        sizeof(g_assembly_data064) );
+  pthread_mutex_init(&uds_lock, NULL);
 
-  /*OUTPUT*/
-  CreateAssemblyObject( DEMO_APP_OUTPUT_ASSEMBLY_NUM, g_assembly_data096,
-                        sizeof(g_assembly_data096) );
+  //pthread_t id_uds;
+  //pthread_create(&id_uds, NULL, uds_thread, NULL);
+  memset((void *)&gfl_assembly_object_data, 0, sizeof(unsigned short)*6);
 
-  /*CONFIG*/
-  CreateAssemblyObject( DEMO_APP_CONFIG_ASSEMBLY_NUM, g_assembly_data097,
-                        sizeof(g_assembly_data097) );
+  memcpy( &gfl_assembly_object_data[HEADER_LENGTH], &data_from_python_application, sizeof(data_from_python_application));
 
-  /*Heart-beat output assembly for Input only connections */
-  CreateAssemblyObject(DEMO_APP_HEARTBEAT_INPUT_ONLY_ASSEMBLY_NUM, NULL, 0);
+  AppendGFLHeaderToData();
+  ResetHeartbeat();
 
-  /*Heart-beat output assembly for Listen only connections */
-  CreateAssemblyObject(DEMO_APP_HEARTBEAT_LISTEN_ONLY_ASSEMBLY_NUM, NULL, 0);
 
-  /* assembly for explicit messaging */
-  CreateAssemblyObject( DEMO_APP_EXPLICT_ASSEMBLY_NUM, g_assembly_data09A,
-                        sizeof(g_assembly_data09A) );
+  #if defined (GFL_ASSEMBLY_OBJECT) && defined (TCMS_ASSEMBLY_OBJECT)
+    /*CONFIG*/
+  CreateAssemblyObject( APP_CONFIG_1, g_assembly_data_config_1,
+                        sizeof(g_assembly_data_config_1) );
 
-  ConfigureExclusiveOwnerConnectionPoint(0, DEMO_APP_OUTPUT_ASSEMBLY_NUM,
-                                         DEMO_APP_INPUT_ASSEMBLY_NUM,
-                                         DEMO_APP_CONFIG_ASSEMBLY_NUM);
-  ConfigureInputOnlyConnectionPoint(0,
-                                    DEMO_APP_HEARTBEAT_INPUT_ONLY_ASSEMBLY_NUM,
-                                    DEMO_APP_INPUT_ASSEMBLY_NUM,
-                                    DEMO_APP_CONFIG_ASSEMBLY_NUM);
-  ConfigureListenOnlyConnectionPoint(0,
-                                     DEMO_APP_HEARTBEAT_LISTEN_ONLY_ASSEMBLY_NUM,
-                                     DEMO_APP_INPUT_ASSEMBLY_NUM,
-                                     DEMO_APP_CONFIG_ASSEMBLY_NUM);
+  /*TCMS/MPU*/
+  CreateAssemblyObject( TCMS_ASSEMBLY_OBJECT, tcms_assembly_object_data,
+                        sizeof(tcms_assembly_object_data) );
 
-  /* For NV data support connect callback functions for each object class with
-   *  NV data.
-   */
-  InsertGetSetCallback(GetCipClass(kCipQoSClassCode), NvQosSetCallback,
-                       kNvDataFunc);
-  InsertGetSetCallback(GetCipClass(kCipTcpIpInterfaceClassCode),
-                       NvTcpipSetCallback,
-                       kNvDataFunc);
+  /*HEARTBEAT*/
+  CreateAssemblyObject( HEARTBEAT_ASSEMBLY_OBJECT, NULL, 0);
 
-#if defined(OPENER_ETHLINK_CNTRS_ENABLE) && 0 != OPENER_ETHLINK_CNTRS_ENABLE
-  /* For the Ethernet Interface & Media Counters connect a PreGetCallback and
-   *  a PostGetCallback.
-   * The PreGetCallback is used to fetch the counters from the hardware.
-   * The PostGetCallback is utilized by the GetAndClear service to clear
-   *  the hardware counters after the current data have been transmitted.
-   */
-  {
-    CipClass *p_eth_link_class = GetCipClass(kCipEthernetLinkClassCode);
-    InsertGetSetCallback(p_eth_link_class,
-                         EthLnkPreGetCallback,
-                         kPreGetFunc);
-    InsertGetSetCallback(p_eth_link_class,
-                         EthLnkPostGetCallback,
-                         kPostGetFunc);
-    /* Specify the attributes for which the callback should be executed. */
-    for (int idx = 0; idx < OPENER_ETHLINK_INSTANCE_CNT; ++idx)
-    {
-      CipAttributeStruct *p_eth_link_attr;
-      CipInstance *p_eth_link_inst =
-        GetCipInstance(p_eth_link_class, idx + 1);
-      OPENER_ASSERT(p_eth_link_inst);
+  /*Gapfill*/
+  CreateAssemblyObject( GFL_ASSEMBLY_OBJECT, gfl_assembly_object_data,
+                        sizeof(gfl_assembly_object_data) );
 
-      /* Interface counters attribute */
-      p_eth_link_attr = GetCipAttribute(p_eth_link_inst, 4);
-      p_eth_link_attr->attribute_flags |= (kPreGetFunc | kPostGetFunc);
-      /* Media counters attribute */
-      p_eth_link_attr = GetCipAttribute(p_eth_link_inst, 5);
-      p_eth_link_attr->attribute_flags |= (kPreGetFunc | kPostGetFunc);
-    }
-  }
-#endif
+  ConfigureExclusiveOwnerConnectionPoint(0, TCMS_ASSEMBLY_OBJECT ,
+                                        GFL_ASSEMBLY_OBJECT,
+					                              APP_CONFIG_1);
+
+  ConfigureInputOnlyConnectionPoint(0, HEARTBEAT_ASSEMBLY_OBJECT,
+                                        GFL_ASSEMBLY_OBJECT,
+					                              APP_CONFIG_1);
+  
+  ConfigureInputOnlyConnectionPoint(1, TCMS_ASSEMBLY_OBJECT,
+                                        HEARTBEAT_ASSEMBLY_OBJECT,
+                                        APP_CONFIG_1);
+
+
+  #endif
 
   return kEipStatusOk;
 }
@@ -134,20 +229,25 @@ void CheckIoConnectionEvent(unsigned int output_assembly_id,
 
 EipStatus AfterAssemblyDataReceived(CipInstance *instance) {
   EipStatus status = kEipStatusOk;
+  OPENER_TRACE_INFO("[AfterAssemblyDataReceived]\n");
+  //OPENER_TRACE_INFO("\ninstance->instance_number is %d\n", instance->instance_number);
 
   /*handle the data received e.g., update outputs of the device */
   switch (instance->instance_number) {
-    case DEMO_APP_OUTPUT_ASSEMBLY_NUM:
-      /* Data for the output assembly has been received.
-       * Mirror it to the inputs */
-      memcpy( &g_assembly_data064[0], &g_assembly_data096[0],
-              sizeof(g_assembly_data064) );
+     case TCMS_ASSEMBLY_OBJECT:
+      //OPENER_TRACE_INFO("\nTCMS_ASSEMBLY_OBJECT\n");
+      status = kEipStatusOk;
+      break;
+    case HEARTBEAT_ASSEMBLY_OBJECT:
+      OPENER_TRACE_INFO("\nHEARTBEAT_ASSEMBLY_OBJECT\n");
+      status = kEipStatusOk;
       break;
     case DEMO_APP_EXPLICT_ASSEMBLY_NUM:
+    OPENER_TRACE_INFO("Explicit at 0: %d", g_assembly_data_explicit[0]);
       /* do something interesting with the new data from
        * the explicit set-data-attribute message */
       break;
-    case DEMO_APP_CONFIG_ASSEMBLY_NUM:
+    case APP_CONFIG_1:
       /* Add here code to handle configuration data and check if it is ok
        * The demo application does not handle config data.
        * However in order to pass the test we accept any data given.
@@ -164,11 +264,34 @@ EipStatus AfterAssemblyDataReceived(CipInstance *instance) {
 }
 
 EipBool8 BeforeAssemblyDataSend(CipInstance *pa_pstInstance) {
+  OPENER_TRACE_INFO("[BeforeAssemblyDataSend]\n");
+  UpdateHeartBeat();
   /*update data to be sent e.g., read inputs of the device */
   /*In this sample app we mirror the data from out to inputs on data receive
    * therefore we need nothing to do here. Just return true to inform that
    * the data is new.
    */
+
+  // if (gfl_assembly_object_data[1] >= 3 && firstConn) // Reseting sequence byte after connection manager handshake
+  //     {
+  //       firstConn = false;
+  //       gfl_assembly_object_data[0] = 0;
+  //       gfl_assembly_object_data[1] = 1;
+  //     }
+  // else if (gfl_assembly_object_data[0] == 255)
+  //     {
+  //       gfl_assembly_object_data[0] = 0;
+  //       gfl_assembly_object_data[1] = 0;
+  //     }
+  // else if (gfl_assembly_object_data[1] == 255)
+  //     {
+  //       gfl_assembly_object_data[1] = 0;
+  //       gfl_assembly_object_data[0] += 1;
+  //     }
+  // else
+  //     {
+  //       gfl_assembly_object_data[1] += 1;
+  //     }
 
   if (pa_pstInstance->instance_number == DEMO_APP_EXPLICT_ASSEMBLY_NUM) {
     /* do something interesting with the existing data
@@ -204,7 +327,7 @@ void CipFree(void *data) {
 }
 
 void RunIdleChanged(EipUint32 run_idle_value) {
-  OPENER_TRACE_INFO("Run/Idle handler triggered\n");
+  OPENER_TRACE_INFO("[RunIdleChanged] Run/Idle handler triggered\n");
   if( (0x0001 & run_idle_value) == 1 ) {
     CipIdentitySetExtendedDeviceStatus(kAtLeastOneIoConnectionInRunMode);
   } else {

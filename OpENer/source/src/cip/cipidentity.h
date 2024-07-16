@@ -86,4 +86,9 @@ void CipIdentityClearStatusFlags(const CipWord status_flags);
 void CipIdentitySetExtendedDeviceStatus(
   CipIdentityExtendedStatus extended_status);
 
+static EipUint8 h_beat = 0;
+
+void SetHeartBeat(EipUint8 hb);
+EipUint8 GetHeartBeat();
+
 #endif /* OPENER_CIPIDENTITY_H_ */

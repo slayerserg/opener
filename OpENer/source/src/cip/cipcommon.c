@@ -85,6 +85,7 @@ EipStatus CipStackInit(const EipUint16 unique_connection_id) {
 }
 
 void ShutdownCipStack(void) {
+  OPENER_TRACE_INFO("[ShutdownCipStack]\n");
   /* First close all connections */
   CloseAllConnections();
   /* Than free the sockets of currently active encapsulation sessions */

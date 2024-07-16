@@ -295,3 +295,11 @@ EipStatus CipIdentityInit() {
 
   return kEipStatusOk;
 }
+
+void SetHeartBeat(EipUint8 hb) {
+  h_beat = hb;
+}
+
+EipUint8 GetHeartBeat() {
+  return h_beat;
+}
