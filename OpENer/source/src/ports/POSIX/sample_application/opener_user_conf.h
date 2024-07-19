@@ -198,7 +198,7 @@
 
 /** @brief The time in ms of the timer used in this implementations, time base for time-outs and production timers
  */
-static const MilliSeconds kOpenerTimerTickInMilliSeconds = 5;
+static const MilliSeconds kOpenerTimerTickInMilliSeconds = 1;
 
 #ifdef OPENER_WITH_TRACES
 /* If we have tracing enabled provide print tracing macro */
