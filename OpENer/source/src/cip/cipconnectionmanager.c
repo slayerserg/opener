@@ -295,8 +295,8 @@ EipStatus HandleReceivedConnectedData(const EipUint8 *const data,
       kEipStatusError ) {
     return kEipStatusError;
   } else {
-    SetHeartBeat(g_common_packet_format_data_item.data_item.data[6]);
-    EipUint8 hb = GetHeartBeat();
+    //SetHeartBeat(g_common_packet_format_data_item.data_item.data[6]);
+    EipUint8 hb = g_common_packet_format_data_item.data_item.data[6];
     OPENER_TRACE_INFO("[HandleReceivedConnectedData] heartbeat from client = %u\n", hb);
     /* check if connected address item or sequenced address item received, otherwise it is no connected message and should not be here */
     if( (g_common_packet_format_data_item.address_item.type_id ==
@@ -988,7 +988,7 @@ EipStatus ManageConnections(MilliSeconds elapsed_time) {
 
           OPENER_TRACE_INFO("[ManageConnections] transmission_trigger_timer = %lu\n", connection_object->transmission_trigger_timer);
           OPENER_TRACE_INFO("[ManageConnections] elapsed_time = %lu\n", elapsed_time);
-          if(connection_object->transmission_trigger_timer <= elapsed_time) { /* need to send package */
+          if(connection_object->transmission_trigger_timer - 5 <= elapsed_time) { /* need to send package */
             OPENER_TRACE_INFO("[ManageConnections] need to send package\n");
             OPENER_ASSERT(
               NULL != connection_object->connection_send_data_function);
