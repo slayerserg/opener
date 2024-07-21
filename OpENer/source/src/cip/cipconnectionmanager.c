@@ -988,7 +988,7 @@ EipStatus ManageConnections(MilliSeconds elapsed_time) {
 
           OPENER_TRACE_INFO("[ManageConnections] transmission_trigger_timer = %lu\n", connection_object->transmission_trigger_timer);
           OPENER_TRACE_INFO("[ManageConnections] elapsed_time = %lu\n", elapsed_time);
-          if(connection_object->transmission_trigger_timer <= elapsed_time + 5) { /* need to send package */
+          if(connection_object->transmission_trigger_timer <= elapsed_time) { /* need to send package */
             OPENER_TRACE_INFO("[ManageConnections] need to send package\n");
             OPENER_ASSERT(
               NULL != connection_object->connection_send_data_function);
