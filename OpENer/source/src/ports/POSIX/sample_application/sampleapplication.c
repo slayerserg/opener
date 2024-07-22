@@ -77,6 +77,8 @@ EipUint8 g_assembly_data_explicit[32]; /* Explicit */
 
 bool firstConn = true;
 
+static unsigned int hb = 0;
+
 void ResetHeartbeat()
 {
   //gfl_assembly_object_data[4] = 0;
@@ -84,7 +86,8 @@ void ResetHeartbeat()
 
 void UpdateHeartBeat()
 {
-  gfl_assembly_object_data[4] = gfl_assembly_object_data[4]++;
+  hb++;
+  gfl_assembly_object_data[4] = hb;
 }
 
 void updateBytes()
