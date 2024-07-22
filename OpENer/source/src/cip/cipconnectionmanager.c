@@ -955,6 +955,8 @@ EipStatus ManageConnections(MilliSeconds elapsed_time) {
           (kConnectionObjectTransportClassTriggerDirectionServer ==
            ConnectionObjectGetTransportClassTriggerDirection(connection_object) ) ) /* all server connections have to maintain an inactivity watchdog timer */
       {
+        OPENER_TRACE_INFO("[ManageConnections] Connection ConnNr: %u, elapsed: %lu, wdt: %lu\n",
+                          connection_object->connection_serial_number, elapsed_time, connection_object->inactivity_watchdog_timer);
         if(elapsed_time >= connection_object->inactivity_watchdog_timer) {
           /* we have a timed out connection perform watchdog time out action*/
           OPENER_TRACE_INFO(">>>>>>>>>>Connection ConnNr: %u timed out\n",
