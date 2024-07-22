@@ -84,7 +84,7 @@ void ResetHeartbeat()
 
 void UpdateHeartBeat()
 {
-  gfl_assembly_object_data[4] = GetHeartBeat();
+  gfl_assembly_object_data[4] = gfl_assembly_object_data[4]++;
 }
 
 void updateBytes()

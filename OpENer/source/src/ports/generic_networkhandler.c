@@ -1156,7 +1156,6 @@ void CheckAndHandleConsumingUdpSocket(void) {
 
       HandleReceivedConnectedData(incoming_message, received_size,
                                   &from_address);
-
     }
   }
 }
