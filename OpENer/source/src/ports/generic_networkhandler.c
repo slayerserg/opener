@@ -931,6 +931,9 @@ EipStatus HandleDataOnTcpSocket(int socket) {
                        (char *) outgoing_message.message_buffer,
                        outgoing_message.used_message_length,
                        MSG_NOSIGNAL);
+
+      print_buff(outgoing_message.message_buffer, outgoing_message.used_message_length);
+
       SocketTimerSetLastUpdate(socket_timer, g_actual_time);
       if(data_sent != outgoing_message.used_message_length) {
         OPENER_TRACE_WARN(

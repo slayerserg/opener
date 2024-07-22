@@ -306,7 +306,7 @@ EipStatus HandleReceivedConnectedData(const EipUint8 *const data,
       if(g_common_packet_format_data_item.data_item.type_id ==
          kCipItemIdConnectedDataItem) { /* connected data item received */
 
-        OPENER_TRACE_INFO("[HandleReceivedConnectedData] Connected data item received");
+        OPENER_TRACE_INFO("[HandleReceivedConnectedData] Connected data item received\n");
 
         CipConnectionObject *connection_object = GetConnectedObject(
           g_common_packet_format_data_item.address_item.data.connection_identifier);
@@ -314,7 +314,7 @@ EipStatus HandleReceivedConnectedData(const EipUint8 *const data,
           return kEipStatusError;
         }
 
-        OPENER_TRACE_INFO("[HandleReceivedConnectedData] Get connection obj OK");
+        OPENER_TRACE_INFO("[HandleReceivedConnectedData] Get connection obj OK\n");
 
         /* only handle the data if it is coming from the originator */
 
