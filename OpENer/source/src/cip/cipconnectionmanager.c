@@ -1025,8 +1025,6 @@ EipStatus ManageConnections(MilliSeconds elapsed_time) {
       } else {
         OPENER_TRACE_INFO("[ManageConnections] 1. Not Connection Object State Established\n");
       }
-    } else {
-        OPENER_TRACE_INFO("[ManageConnections] 2. Not Connection Object State Established\n");
     }
     node = node->next;
   }

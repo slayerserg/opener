@@ -457,7 +457,6 @@ void CheckAndHandleTcpListenerSocket(void) {
 EipStatus NetworkHandlerProcessCyclic(void) {
 
   read_socket = master_socket;
-  OPENER_TRACE_INFO("[NetworkHandlerProcessOnce]\n");
   g_time_value.tv_sec = 0;
   g_time_value.tv_usec =
     (g_network_status.elapsed_time <
@@ -504,8 +503,6 @@ EipStatus NetworkHandlerProcessCyclic(void) {
         }
       }
     }
-  } else {
-    OPENER_TRACE_INFO("[NetworkHandlerProcessOnce] Bad socket (recv)\n");
   }
 
   for(int socket = 0; socket <= highest_socket_handle; socket++) {
@@ -527,7 +524,6 @@ EipStatus NetworkHandlerProcessCyclic(void) {
    */
   if(g_network_status.elapsed_time >= kOpenerTimerTickInMilliSeconds) {
     /* call manage_connections() in connection manager every kOpenerTimerTickInMilliSeconds ms */
-    OPENER_TRACE_INFO("[NetworkHandlerProcessOnce] Call ManageConnections (send)\n");
     ManageConnections(g_network_status.elapsed_time);
 
     /* Call timeout checker functions registered in timeout_checker_array */
@@ -742,6 +738,20 @@ EipStatus SendUdpData(const struct sockaddr_in *const address,
   return kEipStatusOk;
 }
 
+static void print_buff(unsigned char *buf, int buf_len) {
+    int i = 1;
+    while(buf_len > 0) {
+        printf("0x%02x, ", *buf);
+        if (i % 16 == 0) {
+            printf("\n");
+        }
+        buf_len--;
+        buf++;
+        i++;
+    }
+    printf("\n\n");
+}
+
 EipStatus HandleDataOnTcpSocket(int socket) {
   OPENER_TRACE_INFO("[HandleDataOnTcpSocket] Entering HandleDataOnTcpSocket for socket: %d\n", socket);
   int remaining_bytes = 0;
@@ -757,6 +767,10 @@ EipStatus HandleDataOnTcpSocket(int socket) {
   CipOctet incoming_message[PC_OPENER_ETHERNET_BUFFER_SIZE] = { 0 };
 
   long number_of_read_bytes = recv(socket, NWBUF_CAST incoming_message, 4, 0); /*TODO we may have to set the socket to a non blocking socket */
+
+  unsigned char *buf1 = &incoming_message[0];
+  OPENER_TRACE_INFO("[HandleDataOnTcpSocket] 1. recv\n");
+  print_buff(buf1, 4);
 
   SocketTimer *const socket_timer = SocketTimerArrayGetSocketTimer(g_timestamps,
                                                                    OPENER_NUMBER_OF_SUPPORTED_SESSIONS,
@@ -837,6 +851,10 @@ EipStatus HandleDataOnTcpSocket(int socket) {
                               NWBUF_CAST & incoming_message[4],
                               data_size,
                               0);
+
+  unsigned char *buf2 = &incoming_message[4];
+  OPENER_TRACE_INFO("[HandleDataOnTcpSocket] 2. recv\n");
+  print_buff(buf2, data_size);
 
   if(0 == number_of_read_bytes) /* got error or connection closed by client */
   {
@@ -1102,6 +1120,11 @@ void CheckAndHandleConsumingUdpSocket(void) {
                                    0,
                                    (struct sockaddr *) &from_address,
                                    &from_address_length);
+
+      OPENER_TRACE_INFO("[CheckAndHandleConsumingUdpSockets] recv\n");
+      unsigned char *buf1 = &incoming_message[0];
+      print_buff(buf1, received_size);
+
       if(0 == received_size) {
         int error_code = GetSocketErrorNumber();
         char *error_message = GetErrorMessage(error_code);
