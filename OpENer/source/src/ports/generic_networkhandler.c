@@ -697,7 +697,7 @@ EipStatus SendUdpData(const struct sockaddr_in *const address,
     ntohs(address->sin_port) );
 #endif
 
-  EipUint8 hb = outgoing_message->message_buffer[10];
+  EipUint8 hb = outgoing_message->message_buffer[32];
   OPENER_TRACE_INFO("[SendUdpData]: sending ->-> UDP port to be sent to: %x, heartbeat: %u\n", ntohs(address->sin_port), hb);
   sent_data++;
   OPENER_TRACE_INFO("[SendUdpData] SENT: %d\n", sent_data);

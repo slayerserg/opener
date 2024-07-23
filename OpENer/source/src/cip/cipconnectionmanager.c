@@ -295,8 +295,8 @@ EipStatus HandleReceivedConnectedData(const EipUint8 *const data,
       kEipStatusError ) {
     return kEipStatusError;
   } else {
-    //SetHeartBeat(g_common_packet_format_data_item.data_item.data[6]);
-    EipUint8 hb = g_common_packet_format_data_item.data_item.data[6];
+    SetHeartBeat(g_common_packet_format_data_item.data_item.data[6]);
+    EipUint8 hb = GetHeartBeat();
     OPENER_TRACE_INFO("[HandleReceivedConnectedData] heartbeat from client = %u\n", hb);
     /* check if connected address item or sequenced address item received, otherwise it is no connected message and should not be here */
     if( (g_common_packet_format_data_item.address_item.type_id ==
