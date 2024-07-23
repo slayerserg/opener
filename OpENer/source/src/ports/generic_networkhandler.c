@@ -685,6 +685,20 @@ void CheckAndHandleUdpUnicastSocket(void) {
   }
 }
 
+static void print_buff(unsigned char *buf, int buf_len) {
+    int i = 1;
+    while(buf_len > 0) {
+        printf("0x%02x, ", *buf);
+        if (i % 16 == 0) {
+            printf("\n");
+        }
+        buf_len--;
+        buf++;
+        i++;
+    }
+    printf("\n\n");
+}
+
 EipStatus SendUdpData(const struct sockaddr_in *const address,
                       const ENIPMessage
                       *const outgoing_message) {
@@ -697,7 +711,7 @@ EipStatus SendUdpData(const struct sockaddr_in *const address,
     ntohs(address->sin_port) );
 #endif
 
-  EipUint8 hb = outgoing_message->message_buffer[32];
+  EipUint8 hb = outgoing_message->message_buffer[10];
   OPENER_TRACE_INFO("[SendUdpData]: sending ->-> UDP port to be sent to: %x, heartbeat: %u\n", ntohs(address->sin_port), hb);
   sent_data++;
   OPENER_TRACE_INFO("[SendUdpData] SENT: %d\n", sent_data);
@@ -716,6 +730,8 @@ EipStatus SendUdpData(const struct sockaddr_in *const address,
                             (char *)outgoing_message->message_buffer,
                             outgoing_message->used_message_length, 0,
                             (struct sockaddr *) address, sizeof(*address) );
+  print_buff(outgoing_message->message_buffer, outgoing_message->used_message_length);
+
   if(sent_length < 0) {
     int error_code = GetSocketErrorNumber();
     char *error_message = GetErrorMessage(error_code);
@@ -736,20 +752,6 @@ EipStatus SendUdpData(const struct sockaddr_in *const address,
   }
   OPENER_TRACE_INFO("[SendUdpData]: *****************************************************\n");
   return kEipStatusOk;
-}
-
-static void print_buff(unsigned char *buf, int buf_len) {
-    int i = 1;
-    while(buf_len > 0) {
-        printf("0x%02x, ", *buf);
-        if (i % 16 == 0) {
-            printf("\n");
-        }
-        buf_len--;
-        buf++;
-        i++;
-    }
-    printf("\n\n");
 }
 
 EipStatus HandleDataOnTcpSocket(int socket) {
