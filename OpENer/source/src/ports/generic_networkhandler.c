@@ -686,17 +686,25 @@ void CheckAndHandleUdpUnicastSocket(void) {
 }
 
 static void print_buff(unsigned char *buf, int buf_len) {
+    unsigned char str[100] = {};
+    unsigned char *ptr = &str[0];
+
     int i = 1;
+    OPENER_TRACE_INFO("Data:\n");
     while(buf_len > 0) {
-        printf("0x%02x, ", *buf);
+        ptr += sprintf(ptr, "0x%02x, ", *buf);
         if (i % 16 == 0) {
-            printf("\n");
+          OPENER_TRACE_INFO("%s\n", str);
+          for (int j = 0; j < 100; j++) {
+            str[j] = "\0";
+          }
+          ptr = &str[0];
         }
         buf_len--;
         buf++;
         i++;
     }
-    printf("\n\n");
+    OPENER_TRACE_INFO("%s\n\n", str);
 }
 
 EipStatus SendUdpData(const struct sockaddr_in *const address,
