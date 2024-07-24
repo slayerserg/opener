@@ -146,8 +146,8 @@
  *  the connection manager object as well as to the assembly object are supported
  *  in any case.
  */
-#define OPENER_WITH_TRACES 1 	// Włączenie
-#define OPENER_TRACE_LEVEL 0x08 // Wyswietlanie wszystkich logow: info, warn i err
+#define OPENER_WITH_TRACES 1 	  // Włączenie
+#define OPENER_TRACE_LEVEL 0x02 // Wyswietlanie wszystkich logow: info, warn i err
 
 #define OPENER_CIP_NUM_APPLICATION_SPECIFIC_CONNECTABLE_OBJECTS 1
 

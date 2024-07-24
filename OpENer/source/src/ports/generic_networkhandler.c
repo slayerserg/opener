@@ -28,8 +28,8 @@
 
 #define MAX_NO_OF_TCP_SOCKETS 10
 
-static long long sent_data = 0;
-static long long recv_data = 0;
+static unsigned long long sent_data = 0;
+static unsigned long long recv_data = 0;
 
 /* ----- Windows size_t PRI macros ------------- */
 #if defined(__MINGW32__) || defined(STM32) /* This is a Mingw compiler or STM32 target (GCC) */
@@ -720,9 +720,8 @@ EipStatus SendUdpData(const struct sockaddr_in *const address,
 #endif
 
   EipUint8 hb = outgoing_message->message_buffer[10];
-  OPENER_TRACE_INFO("[SendUdpData]: sending ->-> UDP port to be sent to: %x, heartbeat: %u\n", ntohs(address->sin_port), hb);
-  sent_data++;
-  OPENER_TRACE_INFO("[SendUdpData] SENT: %d\n", sent_data);
+  
+  //OPENER_TRACE_INFO("[SendUdpData] SENT: %d\n", sent_data);
   // printf("-----------------------------------\n");
   // for (int i = 0; i < data_length + kUpdHeaderLength; i++) {
   //   EipUint8 val = complete_message[i];
@@ -738,7 +737,9 @@ EipStatus SendUdpData(const struct sockaddr_in *const address,
                             (char *)outgoing_message->message_buffer,
                             outgoing_message->used_message_length, 0,
                             (struct sockaddr *) address, sizeof(*address) );
-  print_buff(outgoing_message->message_buffer, outgoing_message->used_message_length);
+  sent_data++;
+  OPENER_TRACE_WARN("Sending ->-> heartbeat: %u, total: %llu\n", hb, sent_data);
+  //print_buff(outgoing_message->message_buffer, outgoing_message->used_message_length);
 
   if(sent_length < 0) {
     int error_code = GetSocketErrorNumber();
@@ -780,7 +781,7 @@ EipStatus HandleDataOnTcpSocket(int socket) {
 
   unsigned char *buf1 = &incoming_message[0];
   OPENER_TRACE_INFO("[HandleDataOnTcpSocket] 1. recv\n");
-  print_buff(buf1, 4);
+  //print_buff(buf1, 4);
 
   SocketTimer *const socket_timer = SocketTimerArrayGetSocketTimer(g_timestamps,
                                                                    OPENER_NUMBER_OF_SUPPORTED_SESSIONS,
@@ -864,7 +865,7 @@ EipStatus HandleDataOnTcpSocket(int socket) {
 
   unsigned char *buf2 = &incoming_message[4];
   OPENER_TRACE_INFO("[HandleDataOnTcpSocket] 2. recv\n");
-  print_buff(buf2, data_size);
+  //print_buff(buf2, data_size);
 
   if(0 == number_of_read_bytes) /* got error or connection closed by client */
   {
@@ -942,7 +943,7 @@ EipStatus HandleDataOnTcpSocket(int socket) {
                        outgoing_message.used_message_length,
                        MSG_NOSIGNAL);
 
-      print_buff(outgoing_message.message_buffer, outgoing_message.used_message_length);
+      //print_buff(outgoing_message.message_buffer, outgoing_message.used_message_length);
 
       SocketTimerSetLastUpdate(socket_timer, g_actual_time);
       if(data_sent != outgoing_message.used_message_length) {
@@ -1134,9 +1135,12 @@ void CheckAndHandleConsumingUdpSocket(void) {
                                    (struct sockaddr *) &from_address,
                                    &from_address_length);
 
+      EipUint8 hb = incoming_message[24];
+      OPENER_TRACE_WARN("<-<- Receiving: heartbeat = %u\n", hb);
+
       OPENER_TRACE_INFO("[CheckAndHandleConsumingUdpSockets] recv\n");
       unsigned char *buf1 = &incoming_message[0];
-      print_buff(buf1, received_size);
+      //print_buff(buf1, received_size);
 
       if(0 == received_size) {
         int error_code = GetSocketErrorNumber();
